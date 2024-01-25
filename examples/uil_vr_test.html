@@ -20,6 +20,9 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
 
 <script type="module">
 
+
+    // abrir http://localhost:8211/examples/uil_vr_test.html
+
     import * as UIL from '../build/uil.module.js';
     import * as THREE from './three/build/three.module.js';
     import { OrbitControls } from './three/examples/jsm/controls/OrbitControls.js';
@@ -31,7 +34,7 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
     let cw = 128*5, ch=148;
     let screen = null;
     let screen2 = null;
-    let ui, ui2;
+    let ui;
 
     let sets = {
 
@@ -110,8 +113,9 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
         document.getElementById('content').appendChild( renderer.domElement );
 
         camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 2000 );
-        camera.position.set( 0, 14, 30 );
-        controls = new OrbitControls( camera, renderer.domElement );
+        camera.position.set( 0, 40, 40 );
+        camera.lookAt(0,0,10)
+        //controls = new OrbitControls( camera, renderer.domElement );
 
 
         loader = new THREE.TextureLoader();
@@ -126,14 +130,14 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
     	interactive = new THREE.Group();
         scene.add(interactive);
 
-    	plane = new THREE.Mesh( new THREE.PlaneGeometry( 20, 4.625 , 5, 1 ), new THREE.MeshBasicMaterial( { transparent:true } ) );
+    	plane = new THREE.Mesh( new THREE.PlaneGeometry( 20, 20 , 5, 1 ), new THREE.MeshBasicMaterial( { transparent:true } ) );
     	plane.geometry.rotateX( -Math.PI * 0.5 );
-    	plane.position.z = 13;
+    	plane.position.z = 20;
     	plane.visible = false;
         plane.name = 'p1';
 
 
-        plane2 = new THREE.Mesh( new THREE.PlaneGeometry( 20, 4.625 , 5, 1 ), new THREE.MeshBasicMaterial( { transparent:true } ) );
+        plane2 = new THREE.Mesh( new THREE.PlaneGeometry( 20, 20 , 5, 1 ), new THREE.MeshBasicMaterial( { transparent:true } ) );
         plane2.position.z = -13;
         plane2.position.y = 5;
         plane2.name = 'p2';
@@ -145,16 +149,17 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
 
         initGUI();
 
-        setTimeout( initGUI2, 100 );
+        
 
         // events
 
         window.addEventListener( 'resize', resize, false );
 
-        document.addEventListener( 'pointerup', onMouseUp, false );
-        document.addEventListener( 'pointerdown', onMouseDown, false );
-        document.addEventListener( 'pointermove', onMouseMove, false );
-
+        
+        document.body.addEventListener( 'pointerup', onMouseUp );
+        document.body.addEventListener( 'pointerdown', onMouseDown );        
+        document.body.addEventListener( 'pointermove', onMouseMove );
+        
     }
 
     function onSkyReady() {
@@ -259,24 +264,21 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
 
 
     function onMouseUp( e ){
-
-        e.preventDefault();
-        if(!controls.enabled) controls.enabled = true;
+        //console.log("onMouseUp()")
+        ui.triggerMouseUp();
       
     }
 
     function onMouseDown( e ){
-
-        e.preventDefault();
-        controls.enabled = raytest( e ) ? false : true;
+        //console.log("onMouseDown()")
+        ui.triggerMouseDown();
 
     }
 
     function onMouseMove( e ) {
-
-        e.preventDefault();
+        //console.log("onMouseMove()")
+        ui.triggerMouseMove();
         raytest( e );
-
     }
 
     function raytest ( e ) {
@@ -285,39 +287,70 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
         raycaster.setFromCamera( mouse, camera );
         let intersects = raycaster.intersectObjects( interactive.children );
 
-        if(!ui) return
+        if(!ui) return false
 
         if ( intersects.length > 0 ){
 
+            //console.log(intersects[ 0 ].object.name+" "+intersects[ 0 ].uv.x)
             // send uv to ui mouse
             if( intersects[ 0 ].object.name === 'p1' ) ui.setMouse( intersects[ 0 ].uv );
-            if( intersects[ 0 ].object.name === 'p2' ) ui2.setMouse( intersects[ 0 ].uv );
+            
             return true;
 
         } else {
 
             if(ui)ui.reset( true );
-            if(ui2)ui2.reset( true );
+            
             return false;
         }
 
        
     }
 
-    // GUI
+
+    window.faceAction1=function(){
+        ui.setMouse({x:0.75,y:0.76});
+        ui.triggerMouseMove();
+        ui.triggerMouseDown();
+        ui.triggerMouseUp();
+        
+        
+
+        setTimeout(()=>{
+            ui.setMouse({x:0.4,y:0.93});    
+            ui.triggerMouseMove();
+            ui.triggerMouseDown();
+            ui.triggerMouseUp();
+        },200)
+
+    }
 
     function initGUI () {
 
         // terrain
 
-        ui = new UIL.Gui( { w:cw, maxHeight:ch, parent:null, isCanvas:true, close:false, transparent:true } ).onChange( function( v ){ terrain.setData( sets ); debug.innerHTML = v; } );
+        ui = new UIL.Gui({w:128*4, maxHeight:128*4, isCanvas:true,parent:null });
+
+        
+        ui.add("button", { name: "setOrbitalCam", values: ["save", "load"] });        
+        ui.add("slide", { name: "Drone initial Speed", min: 1, max: 10, step: 1,value:5 });
+        ui.add('title', { name: 'LOD' }) 
+        ui.add('list', { name: 'defaultLOD', list: ['250K', '500K', '1M', '2M'], listOnly: false })        
+        ui.add('list', { name: 'includeEvery', list: ['1', '2', '4', '8'], listOnly: false })
+        ui.add("slide", { name: "minSize", min: 1, max: 50, step: 1,value:14 });
+
+        /*
+
+        ui = new UIL.Gui( 
+            { w:cw, maxHeight:ch, parent:null, isCanvas:true, close:false, transparent:true } 
+        ).onChange( function( v ){ terrain.setData( sets ); debug.innerHTML = v; } );
 
         ui.add( sets, 'height', { type:'Circular', min:0, max:10, w:128, precision:2, fontColor:'#D4B87B' } );
         ui.add( sets, 'expo', { type:'Knob', min:0, max:10, w:128, precision:2, fontColor:'#D4B87B' } );
         ui.add( sets, 'move', { type:'joystick', w:128, precision:2, fontColor:'#D4B87B' } );
         ui.add( sets, 'level', { type:'graph', w:128, precision:2, fontColor:'#D4B87B', autoWidth:false } );
         ui.add( sets, 'frequency', { type:'graph', w:128, precision:2, multiplicator:0.25, fontColor:'#D4B87B', autoWidth:false } );
-
+        */
         ui.onDraw = function () {
 
             if( screen === null ){
@@ -327,46 +360,16 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
                 if( useEncoding ) screen.encoding = THREE.sRGBEncoding
                 plane.material.map = screen;
                 plane.material.needsUpdate = true;
-                plane.visible = true;
-                
+                plane.visible = true;                
             }
 
             screen.needsUpdate = true
-
         }
+
+        window.ui=ui;
     }
 
 
-    function initGUI2 () {
-
-        // sky
-
-        ui2 = new UIL.Gui( { w:cw, maxHeight:ch, parent:null, isCanvas:true, close:false, transparent:true } ).onChange( function( v ){ sky.setData( sets_S ); debug.innerHTML = v; } );
-
-        ui2.add( sets_S, 'cloud_size', { type:'Circular', min:0, max:1, w:128, precision:2, fontColor:'#7BD4B8' } );
-        ui2.add( sets_S, 'cloud_covr', { type:'Circular', min:0, max:1, w:128, precision:2, fontColor:'#7BD4B8' } );
-        ui2.add( sets_S, 'cloud_dens', { type:'Circular', min:0, max:100, w:128, precision:2, fontColor:'#7BD4B8' } );
-        ui2.add( sets_S, 'azimuth', { type:'Circular',  min:0, max:360, w:128, precision:0, fontColor:'#D4B87B' } );
-        ui2.add( sets_S, 'hour', { type:'Circular', min:0, max:24, w:128, precision:2, fontColor:'#D47B7B' } );
-
-        ui2.onDraw = function () {
-
-            if( screen2 === null ){
-
-                screen2 = new THREE.Texture( this.canvas );
-                screen2.minFilter = THREE.LinearFilter;
-                if( useEncoding ) screen2.encoding = THREE.sRGBEncoding;
-                plane2.material.map = screen2;
-                plane2.material.needsUpdate = true;
-                plane2.visible = true;
-                
-            }
-
-            screen2.needsUpdate = true
-
-        }
-
-    }
 
 </script>
 </body>

@@ -23,6 +23,7 @@ const R = {
     forceZone:false,
     isEventsInit: false,
     isLeave:false,
+    addDOMEventListeners:true,
 
     downTime:0,
     prevTime:0,
@@ -128,17 +129,20 @@ const R = {
         }
 
         
-        dom.addEventListener( 'pointercancel', R )
-        dom.addEventListener( 'pointerleave', R )
-        //dom.addEventListener( 'pointerout', R )
+        console.log("R.addDOMEventListeners "+R.addDOMEventListeners)
+        if (R.addDOMEventListeners){
+            dom.addEventListener( 'pointercancel', R )
+            dom.addEventListener( 'pointerleave', R )
+            //dom.addEventListener( 'pointerout', R )
 
-        dom.addEventListener( 'pointermove', R )
-        dom.addEventListener( 'pointerdown', R )
-        dom.addEventListener( 'pointerup', R )
-       
+            dom.addEventListener( 'pointermove', R )
+            dom.addEventListener( 'pointerdown', R )
+            dom.addEventListener( 'pointerup', R )
+        
 
-        dom.addEventListener( 'keydown', R, false )
-        dom.addEventListener( 'keyup', R, false )
+            dom.addEventListener( 'keydown', R, false )
+            dom.addEventListener( 'keyup', R, false )
+        }
         window.addEventListener( 'resize', R.resize , false )
 
         //window.onblur = R.out;
@@ -160,18 +164,19 @@ const R = {
             dom.removeEventListener( 'wheel', R )
         }
         
-        
-        dom.removeEventListener( 'pointercancel', R );
-        dom.removeEventListener( 'pointerleave', R );
-        //dom.removeEventListener( 'pointerout', R );
+        if (R.addDOMEventListeners){
+            dom.removeEventListener( 'pointercancel', R );
+            dom.removeEventListener( 'pointerleave', R );
+            //dom.removeEventListener( 'pointerout', R );
 
-        dom.removeEventListener( 'pointermove', R );
-        dom.removeEventListener( 'pointerdown', R );
-        dom.removeEventListener( 'pointerup', R );
-        
+            dom.removeEventListener( 'pointermove', R );
+            dom.removeEventListener( 'pointerdown', R );
+            dom.removeEventListener( 'pointerup', R );
+            
 
-        dom.removeEventListener( 'keydown', R );
-        dom.removeEventListener( 'keyup', R );
+            dom.removeEventListener( 'keydown', R );
+            dom.removeEventListener( 'keyup', R );
+        }
         window.removeEventListener( 'resize', R.resize  );
 
         R.isEventsInit = false;
@@ -221,8 +226,9 @@ const R = {
 
     handleEvent: function ( event ) {
 
+        //console.log("Roots.handleEvent "+event.type)
         //if(!event.type) return;
-
+        
         if( R.prevDefault.indexOf( event.type ) !== -1 ) event.preventDefault(); 
 
         if( R.needResize ) R.resize()
@@ -262,7 +268,7 @@ const R = {
             }
             e.type = 'mousemove';
         }
-
+        
         // double click test
         if( e.type === 'mousedown' ) {
             R.downTime = R.now()
@@ -281,7 +287,7 @@ const R = {
         // mouse lock
         if( e.type === 'mousedown' ) R.lock = true;
         if( e.type === 'mouseup' ) R.lock = false;
-
+        
         //if( R.current !== null && R.current.neverlock ) R.lock = false;
 
         /*if( e.type === 'mousedown' && event.button === 1){
@@ -290,11 +296,14 @@ const R = {
             e.stopPropagation();
         }*/
 
+        //console.log("p4 "+R.isMobile+" "+e.type+" "+R.lock)
+
         if( R.isMobile && e.type === 'mousedown' ) R.findID( e );
         if( e.type === 'mousemove' && !R.lock ) R.findID( e );
         
         if( R.ID !== null ){
 
+            
             if( R.ID.isCanvasOnly ) {
 
                 e.clientX = R.ID.mouse.x;
@@ -303,11 +312,11 @@ const R = {
             }
 
             //if( R.ID.marginDiv ) e.clientY -= R.ID.margin * 0.5
-
+            
             R.ID.handleEvent( e );
 
         }
-
+        
         if( R.isMobile && e.type === 'mouseup' ) R.clearOldID();
         if( leave ) R.clearOldID();
 
@@ -319,7 +328,7 @@ const R = {
     // ----------------------
 
     findID: function ( e ) {
-
+        
         let i = R.ui.length, next = -1, u, x, y;
 
         while( i-- ){
@@ -353,7 +362,7 @@ const R = {
         }
 
         if( next === -1 ) R.clearOldID();
-
+        
     },
 
     clearOldID: function () {

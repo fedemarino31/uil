@@ -184,7 +184,7 @@
         // canvas GUI element
         let cw = 300, ch = 600;
         ui = new UIL.Gui( { w:cw, maxHeight:ch, parent:null, isCanvas:true, close:false } ).onChange( function( v ){ debug.innerHTML = v; } );
-
+        window.ui=ui;
         ui.onDraw = function (){
 
             if( screen === null ){
@@ -237,6 +237,10 @@
 
     }
 
+
+    window.fakeAction1=function(){
+        
+    }
 
 </script>
 </body>

@@ -42,6 +42,8 @@ export const add = function () {
 
             o = a[2];
             o.name = a[1];
+            if (o.hasOwnProperty("displayName")) o.name = o.displayName;
+
             if( type === 'list' && !o.list ){ o.list = a[0][a[1]]; }
             else o.value = a[0][a[1]];
 

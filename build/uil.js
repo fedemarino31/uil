@@ -7,12 +7,15 @@
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
 	(global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.UIL = {}));
-}(this, (function (exports) { 'use strict';
+})(this, (function (exports) { 'use strict';
 
 	/**
 	 * @author lth / https://github.com/lo-th
 	 */
-	const REVISION = '4.3.0'; // INTENAL FUNCTION
+
+	const REVISION = '4.3.0';
+
+	// INTENAL FUNCTION
 
 	const R = {
 		ui: [],
@@ -26,6 +29,7 @@
 		forceZone: false,
 		isEventsInit: false,
 		isLeave: false,
+		addDOMEventListeners: true,
 		downTime: 0,
 		prevTime: 0,
 		//prevDefault: ['contextmenu', 'wheel'],
@@ -76,12 +80,10 @@
 		},
 		remove: function (o) {
 			let i = R.ui.indexOf(o);
-
 			if (i !== -1) {
 				R.removeListen(o);
 				R.ui.splice(i, 1);
 			}
-
 			if (R.ui.length === 0) {
 				R.removeEvents();
 			}
@@ -89,12 +91,12 @@
 		// ----------------------
 		//	 EVENTS
 		// ----------------------
+
 		initEvents: function () {
 			if (R.isEventsInit) return;
 			let dom = document.body;
 			R.isMobile = R.testMobile();
 			R.now = R.getTime();
-
 			if (!R.isMobile) {
 				dom.addEventListener('wheel', R, {
 					passive: false
@@ -102,16 +104,21 @@
 			} else {
 				dom.style.touchAction = 'none';
 			}
+			console.log("R.addDOMEventListeners " + R.addDOMEventListeners);
+			if (R.addDOMEventListeners) {
+				dom.addEventListener('pointercancel', R);
+				dom.addEventListener('pointerleave', R);
+				//dom.addEventListener( 'pointerout', R )
 
-			dom.addEventListener('pointercancel', R);
-			dom.addEventListener('pointerleave', R); //dom.addEventListener( 'pointerout', R )
+				dom.addEventListener('pointermove', R);
+				dom.addEventListener('pointerdown', R);
+				dom.addEventListener('pointerup', R);
+				dom.addEventListener('keydown', R, false);
+				dom.addEventListener('keyup', R, false);
+			}
+			window.addEventListener('resize', R.resize, false);
 
-			dom.addEventListener('pointermove', R);
-			dom.addEventListener('pointerdown', R);
-			dom.addEventListener('pointerup', R);
-			dom.addEventListener('keydown', R, false);
-			dom.addEventListener('keyup', R, false);
-			window.addEventListener('resize', R.resize, false); //window.onblur = R.out;
+			//window.onblur = R.out;
 			//window.onfocus = R.in;
 
 			R.isEventsInit = true;
@@ -120,31 +127,30 @@
 		removeEvents: function () {
 			if (!R.isEventsInit) return;
 			let dom = document.body;
-
 			if (!R.isMobile) {
 				dom.removeEventListener('wheel', R);
 			}
+			if (R.addDOMEventListeners) {
+				dom.removeEventListener('pointercancel', R);
+				dom.removeEventListener('pointerleave', R);
+				//dom.removeEventListener( 'pointerout', R );
 
-			dom.removeEventListener('pointercancel', R);
-			dom.removeEventListener('pointerleave', R); //dom.removeEventListener( 'pointerout', R );
-
-			dom.removeEventListener('pointermove', R);
-			dom.removeEventListener('pointerdown', R);
-			dom.removeEventListener('pointerup', R);
-			dom.removeEventListener('keydown', R);
-			dom.removeEventListener('keyup', R);
+				dom.removeEventListener('pointermove', R);
+				dom.removeEventListener('pointerdown', R);
+				dom.removeEventListener('pointerup', R);
+				dom.removeEventListener('keydown', R);
+				dom.removeEventListener('keyup', R);
+			}
 			window.removeEventListener('resize', R.resize);
 			R.isEventsInit = false;
 		},
 		resize: function () {
 			let i = R.ui.length,
-					u;
-
+				u;
 			while (i--) {
 				u = R.ui[i];
 				if (u.isGui && !u.isCanvasOnly && u.autoResize) u.calc();
 			}
-
 			R.needReZone = true;
 			R.needResize = false;
 		},
@@ -153,18 +159,22 @@
 			R.clearOldID();
 		},
 		in: function () {
-			console.log('im am in'); //	R.clearOldID();
+			console.log('im am in');
+			//	R.clearOldID();
 		},
 		// ----------------------
 		//	 HANDLE EVENTS
 		// ----------------------
+
 		fakeUp: function () {
 			this.handleEvent({
 				type: 'pointerup'
 			});
 		},
 		handleEvent: function (event) {
+			//console.log("Roots.handleEvent "+event.type)
 			//if(!event.type) return;
+
 			if (R.prevDefault.indexOf(event.type) !== -1) event.preventDefault();
 			if (R.needResize) R.resize();
 			R.findZone(R.forceZone);
@@ -178,45 +188,44 @@
 			e.clientX = (ptype === 'touch' ? event.pageX : event.clientX) || 0;
 			e.clientY = (ptype === 'touch' ? event.pageY : event.clientY) || 0;
 			e.type = event.type;
-
 			if (R.eventOut.indexOf(event.type) !== -1) {
 				leave = true;
 				e.type = 'mouseup';
 			}
-
 			if (event.type === 'pointerleave') R.isLeave = true;
 			if (event.type === 'pointerdown') e.type = 'mousedown';
 			if (event.type === 'pointerup') e.type = 'mouseup';
-
 			if (event.type === 'pointermove') {
 				if (R.isLeave) {
 					// if user resize outside this document
 					R.isLeave = false;
 					R.resize();
 				}
-
 				e.type = 'mousemove';
-			} // double click test
+			}
 
-
+			// double click test
 			if (e.type === 'mousedown') {
 				R.downTime = R.now();
-				let time = R.downTime - R.prevTime; // double click on imput
+				let time = R.downTime - R.prevTime;
 
+				// double click on imput
 				if (time < 200) {
 					R.selectAll();
 					return false;
 				}
-
 				R.prevTime = R.downTime;
 				R.forceZone = false;
-			} // for imput
+			}
 
+			// for imput
+			if (e.type === 'mousedown') R.clearInput();
 
-			if (e.type === 'mousedown') R.clearInput(); // mouse lock
-
+			// mouse lock
 			if (e.type === 'mousedown') R.lock = true;
-			if (e.type === 'mouseup') R.lock = false; //if( R.current !== null && R.current.neverlock ) R.lock = false;
+			if (e.type === 'mouseup') R.lock = false;
+
+			//if( R.current !== null && R.current.neverlock ) R.lock = false;
 
 			/*if( e.type === 'mousedown' && event.button === 1){
 					R.cursor()
@@ -224,35 +233,35 @@
 					e.stopPropagation();
 			}*/
 
+			//console.log("p4 "+R.isMobile+" "+e.type+" "+R.lock)
+
 			if (R.isMobile && e.type === 'mousedown') R.findID(e);
 			if (e.type === 'mousemove' && !R.lock) R.findID(e);
-
 			if (R.ID !== null) {
 				if (R.ID.isCanvasOnly) {
 					e.clientX = R.ID.mouse.x;
 					e.clientY = R.ID.mouse.y;
-				} //if( R.ID.marginDiv ) e.clientY -= R.ID.margin * 0.5
+				}
 
+				//if( R.ID.marginDiv ) e.clientY -= R.ID.margin * 0.5
 
 				R.ID.handleEvent(e);
 			}
-
 			if (R.isMobile && e.type === 'mouseup') R.clearOldID();
 			if (leave) R.clearOldID();
 		},
 		// ----------------------
 		//	 ID
 		// ----------------------
+
 		findID: function (e) {
 			let i = R.ui.length,
-					next = -1,
-					u,
-					x,
-					y;
-
+				next = -1,
+				u,
+				x,
+				y;
 			while (i--) {
 				u = R.ui[i];
-
 				if (u.isCanvasOnly) {
 					x = u.mouse.x;
 					y = u.mouse.y;
@@ -260,20 +269,16 @@
 					x = e.clientX;
 					y = e.clientY;
 				}
-
 				if (R.onZone(u, x, y)) {
 					next = i;
-
 					if (next !== R.current) {
 						R.clearOldID();
 						R.current = next;
 						R.ID = u;
 					}
-
 					break;
 				}
 			}
-
 			if (next === -1) R.clearOldID();
 		},
 		clearOldID: function () {
@@ -286,25 +291,26 @@
 		// ----------------------
 		//	 GUI / GROUP FUNCTION
 		// ----------------------
+
 		calcUis: (uis, zone, py, group = false) => {
 			//console.log('calc_uis')
-			let i = uis.length,
-					u,
-					px = 0,
-					n = 0,
-					tw,
-					m;
-			let height = 0;
 
+			let i = uis.length,
+				u,
+				px = 0,
+				n = 0,
+				tw,
+				m;
+			let height = 0;
 			while (i--) {
 				u = uis[n];
 				n++;
 				if (!group && u.isGroup) u.calcUis();
-				m = u.margin; //div = u.marginDiv
+				m = u.margin;
+				//div = u.marginDiv
 
 				u.zone.w = u.w;
 				u.zone.h = u.h + m;
-
 				if (!u.autoWidth) {
 					if (px === 0) height += u.h + m;
 					u.zone.x = zone.x + px;
@@ -314,10 +320,9 @@
 					tw = R.getWidth(u);
 					if (tw) u.zone.w = u.w = tw;else if (u.fw) u.zone.w = u.w = u.fw;
 					px += u.zone.w;
-
 					if (px >= zone.w) {
-						py += u.h + m; //if(div) py += m * 0.5
-
+						py += u.h + m;
+						//if(div) py += m * 0.5
 						px = 0;
 					}
 				} else {
@@ -328,73 +333,77 @@
 					height += u.h + m;
 				}
 			}
-
 			return height;
 		},
 		findTarget: function (uis, e) {
 			let i = uis.length;
-
 			while (i--) {
 				if (R.onZone(uis[i], e.clientX, e.clientY)) return i;
 			}
-
 			return -1;
 		},
 		// ----------------------
 		//	 ZONE
 		// ----------------------
+
 		findZone: function (force) {
 			if (!R.needReZone && !force) return;
 			var i = R.ui.length,
-					u;
-
+				u;
 			while (i--) {
 				u = R.ui[i];
 				R.getZone(u);
 				if (u.isGui) u.calcUis();
 			}
-
 			R.needReZone = false;
 		},
 		onZone: function (o, x, y) {
 			if (x === undefined || y === undefined) return false;
 			let z = o.zone;
 			let mx = x - z.x; // - o.dx;
+			let my = y - z.y;
 
-			let my = y - z.y; //if( this.marginDiv ) e.clientY -= this.margin * 0.5
+			//if( this.marginDiv ) e.clientY -= this.margin * 0.5
 			//if( o.group && o.group.marginDiv ) my += o.group.margin * 0.5
 			//if( o.group !== null ) mx -= o.dx
 
-			let over = mx >= 0 && my >= 0 && mx <= z.w && my <= z.h; //if( o.marginDiv ) my -= o.margin * 0.5
+			let over = mx >= 0 && my >= 0 && mx <= z.w && my <= z.h;
+
+			//if( o.marginDiv ) my -= o.margin * 0.5
 
 			if (over) o.local.set(mx, my);else o.local.neg();
 			return over;
 		},
 		getWidth: function (o) {
 			//return o.getDom().offsetWidth
-			return o.getDom().clientWidth; //let r = o.getDom().getBoundingClientRect();
+			return o.getDom().clientWidth;
+
+			//let r = o.getDom().getBoundingClientRect();
 			//return (r.width)
 			//return Math.floor(r.width)
 		},
 		getZone: function (o) {
 			if (o.isCanvasOnly) return;
-			let r = o.getDom().getBoundingClientRect(); //if( !r.width ) return
+			let r = o.getDom().getBoundingClientRect();
+
+			//if( !r.width ) return
 			//o.zone = { x:Math.floor(r.left), y:Math.floor(r.top), w:Math.floor(r.width), h:Math.floor(r.height) };
 			//o.zone = { x:Math.round(r.left), y:Math.round(r.top), w:Math.round(r.width), h:Math.round(r.height) };
-
 			o.zone = {
 				x: r.left,
 				y: r.top,
 				w: r.width,
 				h: r.height
-			}; //console.log(o.name, o.zone)
+			};
+
+			//console.log(o.name, o.zone)
 		},
 		// ----------------------
 		//	 CURSOR
 		// ----------------------
+
 		cursor: function (name) {
 			name = name ? name : 'auto';
-
 			if (name !== R.oldCursor) {
 				document.body.style.cursor = name;
 				R.oldCursor = name;
@@ -403,18 +412,22 @@
 		// ----------------------
 		//	 CANVAS
 		// ----------------------
+
 		toCanvas: function (o, w, h, force) {
-			if (!R.xmlserializer) R.xmlserializer = new XMLSerializer(); // prevent exesive redraw
+			if (!R.xmlserializer) R.xmlserializer = new XMLSerializer();
+
+			// prevent exesive redraw
 
 			if (force && R.tmpTime !== null) {
 				clearTimeout(R.tmpTime);
 				R.tmpTime = null;
 			}
-
 			if (R.tmpTime !== null) return;
 			if (R.lock) R.tmpTime = setTimeout(function () {
 				R.tmpTime = null;
-			}, 10); ///
+			}, 10);
+
+			///
 
 			let isNewSize = false;
 			if (w !== o.canvas.width || h !== o.canvas.height) isNewSize = true;
@@ -423,42 +436,41 @@
 
 			let htmlString = R.xmlserializer.serializeToString(o.content);
 			let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><foreignObject style="pointer-events: none; left:0;" width="100%" height="100%">' + htmlString + '</foreignObject></svg>';
-
 			img.onload = function () {
 				let ctx = o.canvas.getContext("2d");
-
 				if (isNewSize) {
 					o.canvas.width = w;
 					o.canvas.height = h;
 				} else {
 					ctx.clearRect(0, 0, w, h);
 				}
-
 				ctx.drawImage(this, 0, 0);
 				o.onDraw();
 			};
-
-			img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg); //img.src = 'data:image/svg+xml;base64,'+ window.btoa( svg );
-
+			img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+			//img.src = 'data:image/svg+xml;base64,'+ window.btoa( svg );
 			img.crossOrigin = '';
 		},
 		// ----------------------
 		//	 INPUT
 		// ----------------------
+
 		setHidden: function () {
 			if (R.hiddenImput === null) {
 				//let css = R.parent.css.txtselect + 'padding:0; width:auto; height:auto; '
 				//let css = R.parent.css.txt + 'padding:0; width:auto; height:auto; text-shadow:none;'
 				//css += 'left:10px; top:auto; border:none; color:#FFF; background:#000;' + hide;
-				R.hiddenImput = document.createElement('input');
-				R.hiddenImput.type = 'text'; //R.hiddenImput.style.cssText = css + 'bottom:30px;' + (R.debugInput ? '' : 'transform:scale(0);');
 
-				R.hiddenSizer = document.createElement('div'); //R.hiddenSizer.style.cssText = css + 'bottom:60px;';
+				R.hiddenImput = document.createElement('input');
+				R.hiddenImput.type = 'text';
+				//R.hiddenImput.style.cssText = css + 'bottom:30px;' + (R.debugInput ? '' : 'transform:scale(0);');
+
+				R.hiddenSizer = document.createElement('div');
+				//R.hiddenSizer.style.cssText = css + 'bottom:60px;';
 
 				document.body.appendChild(R.hiddenImput);
 				document.body.appendChild(R.hiddenSizer);
 			}
-
 			let hide = R.debugInput ? '' : 'opacity:0; zIndex:0;';
 			let css = R.parent.css.txtselect + 'padding:0; width:auto; height:auto; left:10px; top:auto; color:#FFF; background:#000;' + hide;
 			R.hiddenImput.style.cssText = css + 'bottom:10px;' + (R.debugInput ? '' : 'transform:scale(0);');
@@ -474,37 +486,31 @@
 		},
 		clickPos: function (x) {
 			let i = R.str.length,
-					l = 0,
-					n = 0;
-
+				l = 0,
+				n = 0;
 			while (i--) {
 				l += R.textWidth(R.str[n]);
 				if (l >= x) break;
 				n++;
 			}
-
 			return n;
 		},
 		upInput: function (x, down) {
 			if (R.parent === null) return false;
 			let up = false;
-
 			if (down) {
 				let id = R.clickPos(x);
 				R.moveX = id;
-
 				if (R.startX === -1) {
 					R.startX = id;
 					R.cursorId = id;
 					R.inputRange = [R.startX, R.startX];
 				} else {
 					let isSelection = R.moveX !== R.startX;
-
 					if (isSelection) {
 						if (R.startX > R.moveX) R.inputRange = [R.moveX, R.startX];else R.inputRange = [R.startX, R.moveX];
 					}
 				}
-
 				up = true;
 			} else {
 				if (R.startX !== -1) {
@@ -516,7 +522,6 @@
 					up = true;
 				}
 			}
-
 			if (up) R.selectParent();
 			return up;
 		},
@@ -547,11 +552,12 @@
 			if (R.parent === null) return;
 			if (!R.firstImput) R.parent.validate(true);
 			R.clearHidden();
-			R.parent.unselect(); //R.input.style.background = 'none';
+			R.parent.unselect();
 
+			//R.input.style.background = 'none';
 			R.input.style.background = R.parent.colors.back;
-			R.input.style.borderColor = R.parent.colors.border; //R.input.style.color = R.parent.colors.text;
-
+			R.input.style.borderColor = R.parent.colors.border;
+			//R.input.style.color = R.parent.colors.text;
 			R.parent.isEdit = false;
 			R.input = null;
 			R.parent = null;
@@ -562,25 +568,28 @@
 			R.input = Input;
 			R.parent = parent;
 			R.input.style.background = R.parent.colors.backoff;
-			R.input.style.borderColor = R.parent.colors.select; //R.input.style.color = R.parent.colors.textSelect;
-
+			R.input.style.borderColor = R.parent.colors.select;
+			//R.input.style.color = R.parent.colors.textSelect;
 			R.str = R.input.textContent;
 			R.setHidden();
 		},
 		keydown: function (e) {
 			if (R.parent === null) return;
 			let keyCode = e.which;
-					e.shiftKey; //console.log( keyCode )
+				e.shiftKey;
+
+			//console.log( keyCode )
 
 			R.firstImput = false;
-
 			if (R.hasFocus) {
 				// hack to fix touch event bug in iOS Safari
 				window.focus();
 				R.hiddenImput.focus();
 			}
+			R.parent.isEdit = true;
 
-			R.parent.isEdit = true; // e.preventDefault();
+			// e.preventDefault();
+
 			// add support for Ctrl/Cmd+A selection
 			//if ( keyCode === 65 && (e.ctrlKey || e.metaKey )) {
 			//R.selectText();
@@ -590,7 +599,11 @@
 
 			if (keyCode === 13) {
 				//enter
-				R.clearInput(); //} else if( keyCode === 9 ){ //tab key
+
+				R.clearInput();
+
+				//} else if( keyCode === 9 ){ //tab key
+
 				// R.input.textContent = '';
 			} else {
 				if (R.input.isNum) {
@@ -611,8 +624,9 @@
 			else R.input.textContent = R.str;
 			R.cursorId = R.hiddenImput.selectionStart;
 			R.inputRange = [R.hiddenImput.selectionStart, R.hiddenImput.selectionEnd];
-			R.selectParent(); //if( R.parent.allway ) 
+			R.selectParent();
 
+			//if( R.parent.allway ) 
 			R.parent.validate();
 		},
 		// ----------------------
@@ -620,13 +634,13 @@
 		//	 LISTENING
 		//
 		// ----------------------
+
 		loop: function () {
 			if (R.isLoop) requestAnimationFrame(R.loop);
 			R.update();
 		},
 		update: function () {
 			let i = R.listens.length;
-
 			while (i--) R.listens[i].listening();
 		},
 		removeListen: function (proto) {
@@ -638,12 +652,10 @@
 			let id = R.listens.indexOf(proto);
 			if (id !== -1) return false;
 			R.listens.push(proto);
-
 			if (!R.isLoop) {
 				R.isLoop = true;
 				R.loop();
 			}
-
 			return true;
 		}
 	};
@@ -688,8 +700,10 @@
 		// ----------------------
 		//	 COLOR
 		// ----------------------
+
 		defineColor: (o, cc = T.colors) => {
-			let color = { ...cc
+			let color = {
+				...cc
 			};
 			let textChange = ['fontFamily', 'fontWeight', 'fontShadow', 'fontSize'];
 			let changeText = false;
@@ -698,51 +712,41 @@
 			if (o.weight) o.fontWeight = o.weight;
 			if (o.fontColor) o.text = o.fontColor;
 			if (o.color) o.text = o.color;
-
 			if (o.text) {
 				color.text = o.text;
-
 				if (!o.fontColor && !o.color) {
 					color.title = T.ColorLuma(o.text, -0.25);
 					color.titleoff = T.ColorLuma(o.text, -0.5);
 				}
-
 				color.textOver = T.ColorLuma(o.text, 0.25);
 				color.textSelect = T.ColorLuma(o.text, 0.5);
 			}
-
 			if (o.button) {
 				color.button = o.button;
 				color.border = T.ColorLuma(o.button, 0.1);
 				color.overoff = T.ColorLuma(o.button, 0.2);
 			}
-
 			if (o.select) {
 				color.select = o.select;
 				color.over = T.ColorLuma(o.select, -0.1);
 			}
-
 			if (o.itemBg) o.back = o.itemBg;
-
 			if (o.back) {
 				color.back = o.back;
 				color.backoff = T.ColorLuma(o.back, -0.1);
 			}
-
 			if (o.fontSelect) color.textSelect = o.fontSelect;
-			if (o.groupBorder) color.gborder = o.groupBorder; //if( o.transparent ) o.bg = 'none'
+			if (o.groupBorder) color.gborder = o.groupBorder;
+
+			//if( o.transparent ) o.bg = 'none'
 			//if( o.bg ) color.background = color.backgroundOver = o.bg
-
 			if (o.bgOver) color.backgroundOver = o.bgOver;
-
 			for (let m in color) {
 				if (o[m] !== undefined) color[m] = o[m];
 			}
-
 			for (let m in o) {
 				if (textChange.indexOf(m) !== -1) changeText = true;
 			}
-
 			if (changeText) T.defineText(color);
 			return color;
 		},
@@ -754,6 +758,7 @@
 			radius: 2,
 			showOver: 1,
 			//groupOver : 1,
+
 			content: 'none',
 			background: 'rgba(50,50,50,0.15)',
 			backgroundOver: 'rgba(50,50,50,0.3)',
@@ -787,12 +792,14 @@
 			hide: 'rgba(0,0,0,0)'
 		},
 		// style css
+
 		css: {
 			basic: 'position:absolute; pointer-events:none; box-sizing:border-box; margin:0; padding:0; overflow:hidden; ' + '-o-user-select:none; -ms-user-select:none; -khtml-user-select:none; -webkit-user-select:none; -moz-user-select:none;',
 			button: 'display:flex; align-items:center; justify-content:center; text-align:center;',
 			middle: 'display:flex; align-items:center; justify-content:left; text-align:left; flex-direction: row-reverse;'
 		},
 		// svg path
+
 		svgs: {
 			g1: 'M 6 4 L 0 4 0 6 6 6 6 4 M 6 0 L 0 0 0 2 6 2 6 0 Z',
 			g2: 'M 6 0 L 4 0 4 6 6 6 6 0 M 2 0 L 0 0 0 6 2 6 2 0 Z',
@@ -819,11 +826,9 @@
 			save: 'M 9 12 L 5 12 5 14 9 14 9 12 M 11.5 7.5 L 13 6 7 0 1 6 2.5 7.5 5 5 5 11 9 11 9 5 11.5 7.5 Z',
 			extern: 'M 14 14 L 14 0 0 0 0 14 14 14 M 12 6 L 12 12 2 12 2 6 12 6 M 12 2 L 12 4 2 4 2 2 12 2 Z'
 		},
-
 		rezone() {
 			Roots.needReZone = true;
 		},
-
 		getImput: function () {
 			return Roots.input ? true : false;
 		},
@@ -831,12 +836,12 @@
 			for (var o in data) {
 				if (T.colors[o]) T.colors[o] = data[o];
 			}
-
 			T.setText();
 		},
 		// ----------------------
 		// custom text
 		// ----------------------
+
 		defineText: function (o) {
 			T.setText(o.fontSize, o.text, o.fontFamily, o.fontShadow, o.fontWeight);
 		},
@@ -847,11 +852,11 @@
 			if (shadow === undefined) shadow = cc.fontShadow;
 			if (weight === undefined) weight = cc.fontWeight;
 			if (color === undefined) color = cc.text;
-
 			if (isNaN(size)) {
 				if (size.search('em') === -1) size += 'px';
-			} else size += 'px'; //let align = 'display:flex; justify-content:left; align-items:center; text-align:left;'
+			} else size += 'px';
 
+			//let align = 'display:flex; justify-content:left; align-items:center; text-align:left;'
 
 			T.css.txt = T.css.basic + T.css.middle + ' font-family:' + font + '; font-weight:' + weight + '; font-size:' + size + '; color:' + cc.text + '; padding:0px 8px; left:0; top:2px; height:16px; width:100px; overflow:hidden; white-space: nowrap; letter-spacing: normal;';
 			if (shadow !== 'none') T.css.txt += ' text-shadow: 1px 1px 1px ' + shadow + ';';
@@ -859,16 +864,20 @@
 			T.css.item = T.css.txt + 'padding:0px 4px; position:relative; margin-bottom:1px; ';
 		},
 		// note
+
 		//https://developer.mozilla.org/fr/docs/Web/CSS/css_flexible_box_layout/aligning_items_in_a_flex_container
 
 		/*cloneColor: function () {
 					let cc = Object.assign({}, T.colors );
 				return cc;
 			},*/
+
 		// intern function
+
 		cloneCss: function () {
 			//let cc = Object.assign({}, T.css );
-			return { ...T.css
+			return {
+				...T.css
 			};
 		},
 		clone: function (o) {
@@ -891,19 +900,20 @@
 		get: function (dom, id) {
 			if (id === undefined) return dom; // root
 			else if (!isNaN(id)) return dom.childNodes[id]; // first child
-				else if (id instanceof Array) {
-						if (id.length === 2) return dom.childNodes[id[0]].childNodes[id[1]];
-						if (id.length === 3) return dom.childNodes[id[0]].childNodes[id[1]].childNodes[id[2]];
-					}
+			else if (id instanceof Array) {
+				if (id.length === 2) return dom.childNodes[id[0]].childNodes[id[1]];
+				if (id.length === 3) return dom.childNodes[id[0]].childNodes[id[1]].childNodes[id[2]];
+			}
 		},
 		dom: function (type, css, obj, dom, id) {
 			type = type || 'div';
-
 			if (T.SVG_TYPE_D.indexOf(type) !== -1 || T.SVG_TYPE_G.indexOf(type) !== -1) {
 				// is svg element
+
 				if (type === 'svg') {
 					dom = document.createElementNS(T.svgns, 'svg');
 					T.set(dom, obj);
+
 					/*	} else if ( type === 'use' ) {
 									dom = document.createElementNS( T.svgns, 'use' );
 								T.set( dom, obj );
@@ -915,9 +925,9 @@
 				}
 			} else {
 				// is html element
+
 				if (dom === undefined) dom = document.createElementNS(T.htmls, type);else dom = dom.appendChild(document.createElementNS(T.htmls, type));
 			}
-
 			if (css) dom.style.cssText = css;
 			if (id === undefined) return dom;else return dom.childNodes[id || 0];
 		},
@@ -930,7 +940,6 @@
 		},
 		clear: function (dom) {
 			T.purge(dom);
-
 			while (dom.firstChild) {
 				if (dom.firstChild.firstChild) T.clear(dom.firstChild);
 				dom.removeChild(dom.firstChild);
@@ -938,23 +947,18 @@
 		},
 		purge: function (dom) {
 			let a = dom.attributes,
-					i,
-					n;
-
+				i,
+				n;
 			if (a) {
 				i = a.length;
-
 				while (i--) {
 					n = a[i].name;
 					if (typeof dom[n] === 'function') dom[n] = null;
 				}
 			}
-
 			a = dom.childNodes;
-
 			if (a) {
 				i = a.length;
-
 				while (i--) {
 					T.purge(dom.childNodes[i]);
 				}
@@ -963,6 +967,7 @@
 		// ----------------------
 		//	 SVG Effects function
 		// ----------------------
+
 		addSVGGlowEffect: function () {
 			if (document.getElementById('UILGlow') !== null) return;
 			let svgFilter = T.initUILEffects();
@@ -979,20 +984,17 @@
 				result: 'uilBlur'
 			});
 			let feMerge = T.addAttributes(filter, 'feMerge', {});
-
 			for (let i = 0; i <= 3; i++) {
 				T.addAttributes(feMerge, 'feMergeNode', {
 					in: 'uilBlur'
 				});
 			}
-
 			T.addAttributes(feMerge, 'feMergeNode', {
 				in: 'SourceGraphic'
 			});
 		},
 		initUILEffects: function () {
 			let svgFilter = document.getElementById('UILSVGEffects');
-
 			if (svgFilter === null) {
 				svgFilter = T.dom('svg', undefined, {
 					id: 'UILSVGEffects',
@@ -1001,34 +1003,33 @@
 				});
 				document.body.appendChild(svgFilter);
 			}
-
 			return svgFilter;
 		},
 		// ----------------------
 		//	 Color function
 		// ----------------------
+
 		ColorLuma: function (hex, l) {
 			//if( hex.substring(0, 3) === 'rgba' ) hex = '#000';
-			if (hex === 'n') hex = '#000'; // validate hex string
 
+			if (hex === 'n') hex = '#000';
+
+			// validate hex string
 			hex = String(hex).replace(/[^0-9a-f]/gi, '');
-
 			if (hex.length < 6) {
 				hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
 			}
+			l = l || 0;
 
-			l = l || 0; // convert to decimal and change luminosity
-
+			// convert to decimal and change luminosity
 			let rgb = "#",
-					c,
-					i;
-
+				c,
+				i;
 			for (i = 0; i < 3; i++) {
 				c = parseInt(hex.substr(i * 2, 2), 16);
 				c = Math.round(Math.min(Math.max(0, c + c * l), 255)).toString(16);
 				rgb += ("00" + c).substr(c.length);
 			}
-
 			return rgb;
 		},
 		findDeepInver: function (c) {
@@ -1036,11 +1037,9 @@
 		},
 		lerpColor: function (c1, c2, factor) {
 			let newColor = {};
-
 			for (let i = 0; i < 3; i++) {
 				newColor[i] = c1[i] + (c2[i] - c1[i]) * factor;
 			}
-
 			return newColor;
 		},
 		hexToHtml: function (v) {
@@ -1078,7 +1077,9 @@
 			let r = Math.round(c[0] * 255).toString(16);
 			let g = Math.round(c[1] * 255).toString(16);
 			let b = Math.round(c[2] * 255).toString(16);
-			return '#' + T.pad(r) + T.pad(g) + T.pad(b); // return '#' + ( '000000' + ( ( c[0] * 255 ) << 16 ^ ( c[1] * 255 ) << 8 ^ ( c[2] * 255 ) << 0 ).toString( 16 ) ).slice( - 6 );
+			return '#' + T.pad(r) + T.pad(g) + T.pad(b);
+
+			// return '#' + ( '000000' + ( ( c[0] * 255 ) << 16 ^ ( c[1] * 255 ) << 8 ^ ( c[2] * 255 ) << 0 ).toString( 16 ) ).slice( - 6 );
 		},
 		hueToRgb: function (p, q, t) {
 			if (t < 0) t += 1;
@@ -1090,31 +1091,29 @@
 		},
 		rgbToHsl: function (c) {
 			let r = c[0],
-					g = c[1],
-					b = c[2],
-					min = Math.min(r, g, b),
-					max = Math.max(r, g, b),
-					delta = max - min,
-					h = 0,
-					s = 0,
-					l = (min + max) / 2;
+				g = c[1],
+				b = c[2],
+				min = Math.min(r, g, b),
+				max = Math.max(r, g, b),
+				delta = max - min,
+				h = 0,
+				s = 0,
+				l = (min + max) / 2;
 			if (l > 0 && l < 1) s = delta / (l < 0.5 ? 2 * l : 2 - 2 * l);
-
 			if (delta > 0) {
 				if (max == r && max != g) h += (g - b) / delta;
 				if (max == g && max != b) h += 2 + (b - r) / delta;
 				if (max == b && max != r) h += 4 + (r - g) / delta;
 				h /= 6;
 			}
-
 			return [h, s, l];
 		},
 		hslToRgb: function (c) {
 			let p,
-					q,
-					h = c[0],
-					s = c[1],
-					l = c[2];
+				q,
+				h = c[0],
+				s = c[1],
+				l = c[2];
 			if (s === 0) return [l, l, l];else {
 				q = l <= 0.5 ? l * (s + 1) : l + s - l * s;
 				p = l * 2 - q;
@@ -1124,14 +1123,14 @@
 		// ----------------------
 		//	 SVG MODEL
 		// ----------------------
+
 		makeGradiant: function (type, settings, parent, colors) {
 			T.dom(type, null, settings, parent, 0);
 			let n = parent.childNodes[0].childNodes.length - 1,
-					c;
-
+				c;
 			for (let i = 0; i < colors.length; i++) {
-				c = colors[i]; //T.dom( 'stop', null, { offset:c[0]+'%', style:'stop-color:'+c[1]+'; stop-opacity:'+c[2]+';' }, parent, [0,n] );
-
+				c = colors[i];
+				//T.dom( 'stop', null, { offset:c[0]+'%', style:'stop-color:'+c[1]+'; stop-opacity:'+c[2]+';' }, parent, [0,n] );
 				T.dom('stop', null, {
 					offset: c[0] + '%',
 					'stop-color': c[1],
@@ -1139,7 +1138,6 @@
 				}, parent, [0, n]);
 			}
 		},
-
 		/*makeGraph: function () {
 					let w = 128;
 				let radius = 34;
@@ -1152,6 +1150,7 @@
 				//T.dom( 'path', '', { d:'', stroke:'rgba(255,255,255,0.3)', 'stroke-width':2, fill:'none', 'stroke-linecap':'round', 'stroke-opacity':0.5 }, svg );//3
 				T.graph = svg;
 			},*/
+
 		makePad: function (model) {
 			let ww = 256;
 			let svg = T.dom('svg', T.css.basic + 'position:relative;', {
@@ -1162,7 +1161,7 @@
 			});
 			let w = 200;
 			let d = (ww - w) * 0.5,
-					m = 20;
+				m = 20;
 			Tools.dom('rect', '', {
 				x: d,
 				y: d,
@@ -1170,7 +1169,6 @@
 				height: w,
 				fill: T.colors.back
 			}, svg); // 0
-
 			Tools.dom('rect', '', {
 				x: d + m * 0.5,
 				y: d + m * 0.5,
@@ -1179,7 +1177,6 @@
 				fill: T.colors.button
 			}, svg); // 1
 			// Pointer
-
 			Tools.dom('line', '', {
 				x1: d + m * 0.5,
 				y1: ww * 0.5,
@@ -1188,7 +1185,6 @@
 				stroke: T.colors.back,
 				'stroke-width': 2
 			}, svg); // 2
-
 			Tools.dom('line', '', {
 				x1: ww * 0.5,
 				x2: ww * 0.5,
@@ -1197,7 +1193,6 @@
 				stroke: T.colors.back,
 				'stroke-width': 2
 			}, svg); // 3
-
 			Tools.dom('circle', '', {
 				cx: ww * 0.5,
 				cy: ww * 0.5,
@@ -1206,7 +1201,6 @@
 				'stroke-width': 5,
 				fill: 'none'
 			}, svg); // 4
-
 			T.pad2d = svg;
 		},
 		makeKnob: function (model) {
@@ -1226,7 +1220,6 @@
 				stroke: 'rgba(0,0,0,0.3)',
 				'stroke-width': 8
 			}, svg); //0
-
 			T.dom('path', '', {
 				d: '',
 				stroke: T.colors.text,
@@ -1234,7 +1227,6 @@
 				fill: 'none',
 				'stroke-linecap': 'round'
 			}, svg); //1
-
 			T.dom('circle', '', {
 				cx: 64,
 				cy: 64,
@@ -1243,7 +1235,6 @@
 				'stroke-width': 7,
 				fill: 'none'
 			}, svg); //2
-
 			T.dom('path', '', {
 				d: '',
 				stroke: 'rgba(255,255,255,0.3)',
@@ -1252,7 +1243,6 @@
 				'stroke-linecap': 'round',
 				'stroke-opacity': 0.5
 			}, svg); //3
-
 			T.knob = svg;
 		},
 		makeCircular: function (model) {
@@ -1272,7 +1262,6 @@
 				'stroke-width': 10,
 				fill: 'none'
 			}, svg); //0
-
 			T.dom('path', '', {
 				d: '',
 				stroke: T.colors.text,
@@ -1280,13 +1269,13 @@
 				fill: 'none',
 				'stroke-linecap': 'butt'
 			}, svg); //1
-
 			T.circular = svg;
 		},
 		makeJoystick: function (model) {
 			//+' background:#f00;'
+
 			let w = 128,
-					ccc;
+				ccc;
 			let radius = Math.floor((w - 30) * 0.5);
 			let innerRadius = Math.floor(radius * 0.6);
 			let svg = T.dom('svg', T.css.basic + 'position:relative;', {
@@ -1297,7 +1286,6 @@
 			});
 			T.dom('defs', null, {}, svg);
 			T.dom('g', null, {}, svg);
-
 			if (model === 0) {
 				// gradian background
 				ccc = [[40, 'rgb(0,0,0)', 0.3], [80, 'rgb(0,0,0)', 0], [90, 'rgb(50,50,50)', 0.4], [100, 'rgb(50,50,50)', 0]];
@@ -1308,8 +1296,9 @@
 					r: '50%',
 					fx: '50%',
 					fy: '50%'
-				}, svg, ccc); // gradian shadow
+				}, svg, ccc);
 
+				// gradian shadow
 				ccc = [[60, 'rgb(0,0,0)', 0.5], [100, 'rgb(0,0,0)', 0]];
 				T.makeGradiant('radialGradient', {
 					id: 'gradS',
@@ -1318,8 +1307,9 @@
 					r: '50%',
 					fx: '50%',
 					fy: '50%'
-				}, svg, ccc); // gradian stick
+				}, svg, ccc);
 
+				// gradian stick
 				let cc0 = ['rgb(40,40,40)', 'rgb(48,48,48)', 'rgb(30,30,30)'];
 				let cc1 = ['rgb(1,90,197)', 'rgb(3,95,207)', 'rgb(0,65,167)'];
 				ccc = [[30, cc0[0], 1], [60, cc0[1], 1], [80, cc0[1], 1], [100, cc0[2], 1]];
@@ -1339,7 +1329,9 @@
 					r: '50%',
 					fx: '50%',
 					fy: '50%'
-				}, svg, ccc); // graph
+				}, svg, ccc);
+
+				// graph
 
 				T.dom('circle', '', {
 					cx: 64,
@@ -1347,14 +1339,12 @@
 					r: radius,
 					fill: 'url(#grad)'
 				}, svg); //2
-
 				T.dom('circle', '', {
 					cx: 64 + 5,
 					cy: 64 + 10,
 					r: innerRadius + 10,
 					fill: 'url(#gradS)'
 				}, svg); //3
-
 				T.dom('circle', '', {
 					cx: 64,
 					cy: 64,
@@ -1382,14 +1372,12 @@
 					stroke: 'rgba(100,100,100,0.25)',
 					'stroke-width': '4'
 				}, svg); //2
-
 				T.dom('circle', '', {
 					cx: 64,
 					cy: 64,
 					r: innerRadius + 14,
 					fill: 'url(#gradX)'
 				}, svg); //3
-
 				T.dom('circle', '', {
 					cx: 64,
 					cy: 64,
@@ -1413,15 +1401,13 @@
 			T.dom('defs', null, {}, svg);
 			T.dom('g', null, {}, svg);
 			let s = 30; //stroke
-
 			let r = (w - s) * 0.5;
 			let mid = w * 0.5;
 			let n = 24,
-					nudge = 8 / r / n * Math.PI,
-					a1 = 0;
+				nudge = 8 / r / n * Math.PI,
+				a1 = 0;
 			let am, tan, d2, a2, ar, i, j, path, ccc;
 			let color = [];
-
 			for (i = 0; i <= n; ++i) {
 				d2 = i / n;
 				a2 = d2 * T.TwoPI;
@@ -1429,14 +1415,11 @@
 				tan = 1 / Math.cos((a2 - a1) * 0.5);
 				ar = [Math.sin(a1), -Math.cos(a1), Math.sin(am) * tan, -Math.cos(am) * tan, Math.sin(a2), -Math.cos(a2)];
 				color[1] = T.rgbToHex(T.hslToRgb([d2, 1, 0.5]));
-
 				if (i > 0) {
 					j = 6;
-
 					while (j--) {
 						ar[j] = (ar[j] * r + mid).toFixed(2);
 					}
-
 					path = ' M' + ar[0] + ' ' + ar[1] + ' Q' + ar[2] + ' ' + ar[3] + ' ' + ar[4] + ' ' + ar[5];
 					ccc = [[0, color[0], 1], [100, color[1], 1]];
 					T.makeGradiant('linearGradient', {
@@ -1454,12 +1437,12 @@
 						'stroke-linecap': "butt"
 					}, svg, 1);
 				}
-
 				a1 = a2 - nudge;
 				color[0] = color[1];
 			}
-			let tw = 84.90; // black / white
+			let tw = 84.90;
 
+			// black / white
 			ccc = [[0, '#FFFFFF', 1], [50, '#FFFFFF', 0], [50, '#000000', 0], [100, '#000000', 1]];
 			T.makeGradiant('linearGradient', {
 				id: 'GL0',
@@ -1482,26 +1465,22 @@
 				'transform-origin': '128px 128px',
 				'transform': 'rotate(0)'
 			}, svg); //2
-
 			T.dom('polygon', '', {
 				points: '78.95 43.1 78.95 212.85 226 128',
 				fill: 'red'
 			}, svg, 2); // 2,0
-
 			T.dom('polygon', '', {
 				points: '78.95 43.1 78.95 212.85 226 128',
 				fill: 'url(#GL1)',
 				'stroke-width': 1,
 				stroke: 'url(#GL1)'
 			}, svg, 2); //2,1
-
 			T.dom('polygon', '', {
 				points: '78.95 43.1 78.95 212.85 226 128',
 				fill: 'url(#GL0)',
 				'stroke-width': 1,
 				stroke: 'url(#GL0)'
 			}, svg, 2); //2,2
-
 			T.dom('path', '', {
 				d: 'M 255.75 136.5 Q 256 132.3 256 128 256 123.7 255.75 119.5 L 241 128 255.75 136.5 Z',
 				fill: 'none',
@@ -1522,43 +1501,35 @@
 			T.colorRing = svg;
 		},
 		icon: function (type, color, w) {
-			w = w || 40; //color = color || '#DEDEDE';
-
-			let viewBox = '0 0 256 256'; //let viewBox = '0 0 '+ w +' '+ w;
-
+			w = w || 40;
+			//color = color || '#DEDEDE';
+			let viewBox = '0 0 256 256';
+			//let viewBox = '0 0 '+ w +' '+ w;
 			let t = ["<svg xmlns='" + T.svgns + "' version='1.1' xmlns:xlink='" + T.htmls + "' style='pointer-events:none;' preserveAspectRatio='xMinYMax meet' x='0px' y='0px' width='" + w + "px' height='" + w + "px' viewBox='" + viewBox + "'><g>"];
-
 			switch (type) {
 				case 'logo':
 					t[1] = "<path id='logoin' fill='" + color + "' stroke='none' d='" + T.logoFill_d + "'/>";
 					break;
-
 				case 'donate':
 					t[1] = "<path id='logoin' fill='" + color + "' stroke='none' d='" + T.logo_donate + "'/>";
 					break;
-
 				case 'neo':
 					t[1] = "<path id='logoin' fill='" + color + "' stroke='none' d='" + T.logo_neo + "'/>";
 					break;
-
 				case 'phy':
 					t[1] = "<path id='logoin' stroke='" + color + "' stroke-width='49' stroke-linejoin='round' stroke-linecap='butt' fill='none' d='" + T.logo_phy + "'/>";
 					break;
-
 				case 'config':
 					t[1] = "<path id='logoin' stroke='" + color + "' stroke-width='49' stroke-linejoin='round' stroke-linecap='butt' fill='none' d='" + T.logo_config + "'/>";
 					break;
-
 				case 'github':
 					t[1] = "<path id='logoin' fill='" + color + "' stroke='none' d='" + T.logo_github + "'/>";
 					break;
-
 				case 'save':
 					t[1] = "<path stroke='" + color + "' stroke-width='4' stroke-linejoin='round' stroke-linecap='round' fill='none' d='M 26.125 17 L 20 22.95 14.05 17 M 20 9.95 L 20 22.95'/><path stroke='" + color;
 					t[1] += "' stroke-width='2.5' stroke-linejoin='round' stroke-linecap='round' fill='none' d='M 32.6 23 L 32.6 25.5 Q 32.6 28.5 29.6 28.5 L 10.6 28.5 Q 7.6 28.5 7.6 25.5 L 7.6 23'/>";
 					break;
 			}
-
 			t[2] = "</g></svg>";
 			return t.join("\n");
 		},
@@ -1612,13 +1583,14 @@
 	const Tools = T;
 
 	///https://wicg.github.io/file-system-access/#api-filesystemfilehandle-getfile
+
 	class Files {
 		//-----------------------------
 		//	FILE TYPE
 		//-----------------------------
+
 		static autoTypes(type) {
 			let t = [];
-
 			switch (type) {
 				case 'svg':
 					t = [{
@@ -1627,7 +1599,6 @@
 						}
 					}];
 					break;
-
 				case 'wav':
 					t = [{
 						accept: {
@@ -1635,7 +1606,6 @@
 						}
 					}];
 					break;
-
 				case 'mp3':
 					t = [{
 						accept: {
@@ -1643,7 +1613,6 @@
 						}
 					}];
 					break;
-
 				case 'mp4':
 					t = [{
 						accept: {
@@ -1651,7 +1620,6 @@
 						}
 					}];
 					break;
-
 				case 'bin':
 				case 'hex':
 					t = [{
@@ -1661,7 +1629,6 @@
 						}
 					}];
 					break;
-
 				case 'text':
 					t = [{
 						description: 'Text Files',
@@ -1671,7 +1638,6 @@
 						}
 					}];
 					break;
-
 				case 'json':
 					t = [{
 						description: 'JSON Files',
@@ -1679,9 +1645,7 @@
 							'application/json': ['.json']
 						}
 					}]; //text/plain
-
 					break;
-
 				case 'js':
 					t = [{
 						description: 'JavaScript Files',
@@ -1690,7 +1654,6 @@
 						}
 					}];
 					break;
-
 				case 'image':
 					t = [{
 						description: 'Images',
@@ -1699,7 +1662,6 @@
 						}
 					}];
 					break;
-
 				case 'icon':
 					t = [{
 						description: 'Icons',
@@ -1708,7 +1670,6 @@
 						}
 					}];
 					break;
-
 				case 'lut':
 					t = [{
 						description: 'Lut',
@@ -1718,29 +1679,30 @@
 					}];
 					break;
 			}
-
 			return t;
-		} //-----------------------------
+		}
+
+		//-----------------------------
 		//	LOAD
 		//-----------------------------
-
 
 		static async load(o = {}) {
 			if (typeof window.showOpenFilePicker !== 'function') {
 				window.showOpenFilePicker = Files.showOpenFilePickerPolyfill;
 			}
-
 			try {
 				let type = o.type || '';
 				const options = {
 					excludeAcceptAllOption: type ? true : false,
-					multiple: false //startIn:'./assets'
-
+					multiple: false
+					//startIn:'./assets'
 				};
-				options.types = Files.autoTypes(type); // create a new handle
+				options.types = Files.autoTypes(type);
 
+				// create a new handle
 				const handle = await window.showOpenFilePicker(options);
-				const file = await handle[0].getFile(); //let content = await file.text()
+				const file = await handle[0].getFile();
+				//let content = await file.text()
 
 				if (!file) return null;
 				let fname = file.name;
@@ -1749,25 +1711,19 @@
 				const dataBuf = ['sea', 'z', 'hex', 'bvh', 'BVH', 'glb', 'gltf'];
 				const reader = new FileReader();
 				if (dataUrl.indexOf(ftype) !== -1) reader.readAsDataURL(file);else if (dataBuf.indexOf(ftype) !== -1) reader.readAsArrayBuffer(file);else reader.readAsText(file);
-
 				reader.onload = function (e) {
 					let content = e.target.result;
-
 					switch (type) {
 						case 'image':
 							let img = new Image();
-
 							img.onload = function () {
 								if (o.callback) o.callback(img, fname, ftype);
 							};
-
 							img.src = content;
 							break;
-
 						case 'json':
 							if (o.callback) o.callback(JSON.parse(content), fname, ftype);
 							break;
-
 						default:
 							if (o.callback) o.callback(content, fname, ftype);
 							break;
@@ -1778,7 +1734,6 @@
 				if (o.always && o.callback) o.callback(null);
 			}
 		}
-
 		static showOpenFilePickerPolyfill(options) {
 			return new Promise(resolve => {
 				const input = document.createElement("input");
@@ -1796,19 +1751,18 @@
 				});
 				input.click();
 			});
-		} //-----------------------------
+		}
+
+		//-----------------------------
 		//	SAVE
 		//-----------------------------
 
-
 		static async save(o = {}) {
 			let usePoly = false;
-
 			if (typeof window.showSaveFilePicker !== 'function') {
 				window.showSaveFilePicker = Files.showSaveFilePickerPolyfill;
 				usePoly = true;
 			}
-
 			try {
 				let type = o.type || '';
 				const options = {
@@ -1817,24 +1771,27 @@
 				};
 				options.types = Files.autoTypes(type);
 				options.finalType = Object.keys(options.types[0].accept)[0];
-				options.suggestedName += options.types[0].accept[options.finalType][0]; // create a new handle
+				options.suggestedName += options.types[0].accept[options.finalType][0];
 
+				// create a new handle
 				const handle = await window.showSaveFilePicker(options);
-				if (usePoly) return; // create a FileSystemWritableFileStream to write to
+				if (usePoly) return;
 
+				// create a FileSystemWritableFileStream to write to
 				const file = await handle.createWritable();
 				let blob = new Blob([options.data], {
 					type: options.finalType
-				}); // write our file
+				});
 
-				await file.write(blob); // close the file and write the contents to disk.
+				// write our file
+				await file.write(blob);
 
+				// close the file and write the contents to disk.
 				await file.close();
 			} catch (e) {
 				console.log(e);
 			}
 		}
-
 		static showSaveFilePickerPolyfill(options) {
 			return new Promise(resolve => {
 				const a = document.createElement("a");
@@ -1848,28 +1805,26 @@
 				});
 				a.click();
 			});
-		} //-----------------------------
+		}
+
+		//-----------------------------
 		//	FOLDER not possible in poly
 		//-----------------------------
-
 
 		static async getFolder() {
 			try {
 				const handle = await window.showDirectoryPicker();
 				const files = [];
-
 				for await (const entry of handle.values()) {
 					const file = await entry.getFile();
 					files.push(file);
 				}
-
 				console.log(files);
 				return files;
 			} catch (e) {
 				console.log(e);
 			}
 		}
-
 	}
 
 	class V2 {
@@ -1877,82 +1832,68 @@
 			this.x = x;
 			this.y = y;
 		}
-
 		set(x, y) {
 			this.x = x;
 			this.y = y;
 			return this;
 		}
-
 		divide(v) {
 			this.x /= v.x;
 			this.y /= v.y;
 			return this;
 		}
-
 		multiply(v) {
 			this.x *= v.x;
 			this.y *= v.y;
 			return this;
 		}
-
 		multiplyScalar(scalar) {
 			this.x *= scalar;
 			this.y *= scalar;
 			return this;
 		}
-
 		divideScalar(scalar) {
 			return this.multiplyScalar(1 / scalar);
 		}
-
 		length() {
 			return Math.sqrt(this.x * this.x + this.y * this.y);
 		}
-
 		angle() {
 			// computes the angle in radians with respect to the positive x-axis
+
 			var angle = Math.atan2(this.y, this.x);
 			if (angle < 0) angle += 2 * Math.PI;
 			return angle;
 		}
-
 		addScalar(s) {
 			this.x += s;
 			this.y += s;
 			return this;
 		}
-
 		negate() {
 			this.x *= -1;
 			this.y *= -1;
 			return this;
 		}
-
 		neg() {
 			this.x = -1;
 			this.y = -1;
 			return this;
 		}
-
 		isZero() {
 			return this.x === 0 && this.y === 0;
 		}
-
 		copy(v) {
 			this.x = v.x;
 			this.y = v.y;
 			return this;
 		}
-
 		equals(v) {
 			return v.x === this.x && v.y === this.y;
 		}
-
 		nearEquals(v, n) {
 			return v.x.toFixed(n) === this.x.toFixed(n) && v.y.toFixed(n) === this.y.toFixed(n);
 		}
-
 		lerp(v, alpha) {
 			if (v === null) {
 				this.x -= this.x * alpha;
@@ -1961,10 +1902,8 @@
 				this.x += (v.x - this.x) * alpha;
 				this.y += (v.y - this.y) * alpha;
 			}
-
 			return this;
 		}
-
 	}
 
 	/**
@@ -1974,12 +1913,15 @@
 	class Proto {
 		constructor(o = {}) {
 			// disable mouse controle
-			this.lock = o.lock || false; // for button
+			this.lock = o.lock || false;
 
-			this.neverlock = false; // only simple space 
+			// for button
+			this.neverlock = false;
 
-			this.isSpace = o.isSpace || false; // if is on gui or group
+			// only simple space 
+			this.isSpace = o.isSpace || false;
 
+			// if is on gui or group
 			this.main = o.main || null;
 			this.isUI = o.isUI || false;
 			this.group = o.group || null;
@@ -2004,291 +1946,286 @@
 			};
 			this.local = new V2().neg();
 			this.isCanvasOnly = false;
-			this.isSelect = false; // percent of title
+			this.isSelect = false;
 
+			// percent of title
 			this.p = o.p !== undefined ? o.p : Tools.size.p;
 			this.w = this.isUI ? this.main.size.w : Tools.size.w;
 			if (o.w !== undefined) this.w = o.w;
 			this.h = this.isUI ? this.main.size.h : Tools.size.h;
 			if (o.h !== undefined) this.h = o.h;
-			if (!this.isSpace) this.h = this.h < 11 ? 11 : this.h;else this.lock = true; // decale for canvas only
+			if (!this.isSpace) this.h = this.h < 11 ? 11 : this.h;else this.lock = true;
 
+			// decale for canvas only
 			this.fw = o.fw || 0;
 			this.autoWidth = o.auto || true; // auto width or flex 
-
 			this.isOpen = false; //false// open statu
+
 			// radius for toolbox
-
 			this.radius = o.radius || this.colors.radius;
-			this.transition = o.transition || Tools.transition; // only for number
+			this.transition = o.transition || Tools.transition;
 
+			// only for number
 			this.isNumber = false;
 			this.noNeg = o.noNeg || false;
-			this.allEqual = o.allEqual || false; // only most simple 
+			this.allEqual = o.allEqual || false;
 
-			this.mono = false; // stop listening for edit slide text
+			// only most simple 
+			this.mono = false;
 
-			this.isEdit = false; // no title 
+			// stop listening for edit slide text
+			this.isEdit = false;
 
+			// no title 
 			this.simple = o.simple || false;
-			if (this.simple) this.sa = 0; // define obj size
+			if (this.simple) this.sa = 0;
 
-			this.setSize(this.w); // title size
+			// define obj size
+			this.setSize(this.w);
 
+			// title size
 			if (o.sa !== undefined) this.sa = o.sa;
 			if (o.sb !== undefined) this.sb = o.sb;
-			if (this.simple) this.sb = this.w - this.sa; // last number size for slide
+			if (this.simple) this.sb = this.w - this.sa;
 
-			this.sc = o.sc === undefined ? 47 : o.sc; // for listening object
+			// last number size for slide
+			this.sc = o.sc === undefined ? 47 : o.sc;
 
+			// for listening object
 			this.objectLink = null;
 			this.isSend = false;
 			this.objectKey = null;
 			this.txt = o.name || '';
 			this.name = o.rename || this.txt;
-			this.target = o.target || null; // callback
+			this.target = o.target || null;
 
+			// callback
 			this.callback = o.callback === undefined ? null : o.callback;
 			this.endCallback = null;
 			this.openCallback = o.openCallback === undefined ? null : o.openCallback;
-			this.closeCallback = o.closeCallback === undefined ? null : o.closeCallback; // if no callback take one from group or gui
+			this.closeCallback = o.closeCallback === undefined ? null : o.closeCallback;
 
+			// if no callback take one from group or gui
 			if (this.callback === null && this.isUI && this.main.callback !== null) {
 				this.callback = this.group ? this.group.callback : this.main.callback;
-			} // elements
+			}
 
+			// elements
+			this.c = [];
 
-			this.c = []; // style 
-
+			// style 
 			this.s = [];
 			this.useFlex = this.isUI ? this.main.useFlex : false;
 			let flexible = this.useFlex ? 'display:flex; justify-content:center; align-items:center; text-align:center; flex: 1 100%;' : 'float:left;';
 			this.c[0] = Tools.dom('div', this.css.basic + flexible + 'position:relative; height:20px;');
-			this.s[0] = this.c[0].style; // bottom margin
+			this.s[0] = this.c[0].style;
 
+			// bottom margin
 			this.margin = this.colors.sy;
 			this.mtop = 0;
 			let marginDiv = Tools.isDivid(this.margin);
-
 			if (this.isUI && this.margin) {
 				this.s[0].boxSizing = 'content-box';
-
 				if (marginDiv) {
-					this.mtop = this.margin * 0.5; //this.s[0].borderTop = '${this.mtop}px solid transparent'
+					this.mtop = this.margin * 0.5;
+					//this.s[0].borderTop = '${this.mtop}px solid transparent'
 					//console.log(`${this.mtop}px solid transparent`)
-
 					this.s[0].borderTop = this.mtop + 'px solid transparent';
 					this.s[0].borderBottom = this.mtop + 'px solid transparent';
 				} else {
 					this.s[0].borderBottom = this.margin + 'px solid transparent';
 				}
-			} // with title
+			}
 
-
+			// with title
 			if (!this.simple) {
 				this.c[1] = Tools.dom('div', this.css.txt + this.css.middle);
 				this.s[1] = this.c[1].style;
 				this.c[1].textContent = this.name;
 				this.s[1].color = this.lock ? this.colors.titleoff : this.colors.title;
 			}
-
 			if (o.pos) {
 				this.s[0].position = 'absolute';
-
 				for (let p in o.pos) {
 					this.s[0][p] = o.pos[p];
 				}
-
 				this.mono = true;
 			}
-
 			if (o.css) this.s[0].cssText = o.css;
-		} // ----------------------
+		}
+
+		// ----------------------
 		// make the node
 		// ----------------------
-
 
 		init() {
 			this.ytop = this.top + this.mtop;
 			this.zone.h = this.h + this.margin;
 			this.zone.w = this.w;
 			let s = this.s; // style cache
-
 			let c = this.c; // div cach
 
 			s[0].height = this.h + 'px';
 			if (this.isUI) s[0].background = this.colors.background;
-
 			if (!this.autoWidth && this.useFlex) {
 				s[0].flex = '1 0 auto';
 				s[0].minWidth = this.minw + 'px';
 				s[0].textAlign = 'center';
 			} else {
 				if (this.isUI) s[0].width = '100%';
-			} //if( this.autoHeight ) s[0].transition = 'height 0.01s ease-out';
+			}
 
-
+			//if( this.autoHeight ) s[0].transition = 'height 0.01s ease-out';
 			if (c[1] !== undefined && this.autoWidth) {
 				s[1] = c[1].style;
 				s[1].top = 1 + 'px';
 				s[1].height = this.h - 2 + 'px';
 			}
-
 			let frag = Tools.frag;
-
 			for (let i = 1, lng = c.length; i !== lng; i++) {
 				if (c[i] !== undefined) {
 					frag.appendChild(c[i]);
 					s[i] = c[i].style;
 				}
 			}
-
 			let pp = this.target !== null ? this.target : this.isUI ? this.main.inner : document.body;
 			if (this.ontop) pp.insertAdjacentElement('afterbegin', c[0]);else pp.appendChild(c[0]);
 			c[0].appendChild(frag);
-			this.rSize(); // ! solo proto
+			this.rSize();
 
+			// ! solo proto
 			if (!this.isUI) {
 				this.c[0].style.pointerEvents = 'auto';
 				Roots.add(this);
 			}
 		}
-
 		addTransition() {
 			if (this.baseH && this.transition && this.isUI) {
 				this.c[0].style.transition = 'height ' + this.transition + 's ease-out';
 			}
-		} // from Tools
+		}
 
+		// from Tools
 
 		dom(type, css, obj, dom, id) {
 			return Tools.dom(type, css, obj, dom, id);
 		}
-
 		setSvg(dom, type, value, id, id2) {
 			Tools.setSvg(dom, type, value, id, id2);
 		}
-
 		setCss(dom, css) {
 			Tools.setCss(dom, css);
 		}
-
 		clamp(value, min, max) {
 			return Tools.clamp(value, min, max);
 		}
-
 		getColorRing() {
 			if (!Tools.colorRing) Tools.makeColorRing();
 			return Tools.clone(Tools.colorRing);
 		}
-
 		getJoystick(model) {
 			if (!Tools['joystick_' + model]) Tools.makeJoystick(model);
 			return Tools.clone(Tools['joystick_' + model]);
 		}
-
 		getCircular(model) {
 			if (!Tools.circular) Tools.makeCircular(model);
 			return Tools.clone(Tools.circular);
 		}
-
 		getKnob(model) {
 			if (!Tools.knob) Tools.makeKnob(model);
 			return Tools.clone(Tools.knob);
 		}
-
 		getPad2d(model) {
 			if (!Tools.pad2d) Tools.makePad(model);
 			return Tools.clone(Tools.pad2d);
-		} // from Roots
+		}
 
+		// from Roots
 
 		cursor(name) {
 			Roots.cursor(name);
-		} /////////
+		}
 
+		/////////
 
 		update() {}
+		reset() {}
 
-		reset() {} /////////
-
+		/////////
 
 		content() {
 			return this.c[0];
 		}
-
 		getDom() {
 			return this.c[0];
 		}
-
 		uiout() {
 			if (this.lock) return;
 			if (!this.overEffect) return;
 			if (this.s) this.s[0].background = this.colors.background;
 		}
-
 		uiover() {
 			if (this.lock) return;
 			if (!this.overEffect) return;
 			if (this.s) this.s[0].background = this.colors.backgroundOver;
 		}
-
 		rename(s) {
 			if (this.c[1] !== undefined) this.c[1].textContent = s;
 		}
-
 		listen() {
 			this.isListen = Roots.addListen(this);
 			return this;
 		}
-
 		listening() {
 			if (this.objectLink === null) return;
 			if (this.isSend) return;
 			if (this.isEdit) return;
 			this.setValue(this.objectLink[this.objectKey]);
 		}
-
 		setValue(v) {
-			if (this.isNumber) this.value = this.numValue(v); //else if( v instanceof Array && v.length === 1 ) v = v[0];
+			if (this.isNumber) this.value = this.numValue(v);
+			//else if( v instanceof Array && v.length === 1 ) v = v[0];
 			else this.value = v;
 			this.update();
-		} // ----------------------
+		}
+
+		// ----------------------
 		// update every change
 		// ----------------------
-
 
 		onChange(f) {
 			if (this.isSpace) return;
 			this.callback = f || null;
 			return this;
-		} // ----------------------
+		}
+
+		// ----------------------
 		// update only on end
 		// ----------------------
-
 
 		onFinishChange(f) {
 			if (this.isSpace) return;
 			this.callback = null;
 			this.endCallback = f;
 			return this;
-		} // ----------------------
+		}
+
+		// ----------------------
 		// event on open close
 		// ----------------------
-
 
 		onOpen(f) {
 			this.openCallback = f;
 			return this;
 		}
-
 		onClose(f) {
 			this.closeCallback = f;
 			return this;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	send back value
 		// ----------------------
-
 
 		send(v) {
 			v = v || this.value;
@@ -2298,27 +2235,25 @@
 			if (this.callback) this.callback(v, this.objectKey);
 			this.isSend = false;
 		}
-
 		sendEnd(v) {
 			v = v || this.value;
 			if (v instanceof Array && v.length === 1) v = v[0];
 			if (this.endCallback) this.endCallback(v);
 			if (this.objectLink !== null) this.objectLink[this.objectKey] = v;
-		} // ----------------------
+		}
+
+		// ----------------------
 		// clear node
 		// ----------------------
-
 
 		dispose() {
 			if (this.isListen) Roots.removeListen(this);
 			Tools.clear(this.c[0]);
-
 			if (this.target !== null) {
 				if (this.group !== null) this.group.clearOne(this);else this.target.removeChild(this.c[0]);
 			} else {
 				if (this.isUI) this.main.clearOne(this);else document.body.removeChild(this.c[0]);
 			}
-
 			if (!this.isUI) Roots.remove(this);
 			this.c = null;
 			this.s = null;
@@ -2326,146 +2261,133 @@
 			this.target = null;
 			this.isListen = false;
 		}
+		clear() {}
 
-		clear() {} // ----------------------
+		// ----------------------
 		// change size 
 		// ----------------------
-
 
 		getWidth() {
 			let nw = Roots.getWidth(this);
 			if (nw) this.w = nw;
 		}
-
 		setSize(sx) {
 			if (!this.autoWidth) return;
 			this.w = sx;
-
 			if (this.simple) {
 				this.sb = this.w - this.sa;
 			} else {
-				let pp = this.w * (this.p / 100); //this.sa = Math.floor( pp + 10 )
+				let pp = this.w * (this.p / 100);
+				//this.sa = Math.floor( pp + 10 )
 				//this.sb = Math.floor( this.w - pp - 20 )
-
 				this.sa = Math.floor(pp + 8);
 				this.sb = Math.floor(this.w - pp - 16);
 			}
 		}
-
 		rSize() {
 			if (!this.autoWidth) return;
 			if (!this.isUI) this.s[0].width = this.w + 'px';
 			if (!this.simple) this.s[1].width = this.sa + 'px';
-		} // ----------------------
+		}
+
+		// ----------------------
 		// for numeric value
 		// ----------------------
-
 
 		setTypeNumber(o) {
 			this.isNumber = true;
 			this.value = 0;
-
 			if (o.value !== undefined) {
 				if (typeof o.value === 'string') this.value = o.value * 1;else this.value = o.value;
 			}
-
 			this.min = o.min === undefined ? -Infinity : o.min;
 			this.max = o.max === undefined ? Infinity : o.max;
 			this.precision = o.precision === undefined ? 2 : o.precision;
 			let s;
-
 			switch (this.precision) {
 				case 0:
 					s = 1;
 					break;
-
 				case 1:
 					s = 0.1;
 					break;
-
 				case 2:
 					s = 0.01;
 					break;
-
 				case 3:
 					s = 0.001;
 					break;
-
 				case 4:
 					s = 0.0001;
 					break;
-
 				case 5:
 					s = 0.00001;
 					break;
-
 				case 6:
 					s = 0.000001;
 					break;
 			}
-
 			this.step = o.step === undefined ? s : o.step;
 			this.range = this.max - this.min;
 			this.value = this.numValue(this.value);
 		}
-
 		numValue(n) {
 			if (this.noNeg) n = Math.abs(n);
 			return Math.min(this.max, Math.max(this.min, n)).toFixed(this.precision) * 1;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS DEFAULT
 		// ----------------------
-
 
 		handleEvent(e) {
 			if (this.lock) return;
 			if (this.neverlock) Roots.lock = false;
-			if (!this[e.type]) return console.error(e.type, 'this type of event no existe !'); // TODO !!!!
+			if (!this[e.type]) return console.error(e.type, 'this type of event no existe !');
+
+			// TODO !!!!
+
 			//if( this.marginDiv ) z.d -= this.margin * 0.5
+
 			//if( this.marginDiv ) e.clientY -= this.margin * 0.5
 			//if( this.group && this.group.marginDiv ) e.clientY -= this.group.margin * 0.5
 
 			return this[e.type](e);
 		}
-
 		wheel(e) {
 			return false;
 		}
-
 		mousedown(e) {
 			return false;
 		}
-
 		mousemove(e) {
 			return false;
 		}
-
 		mouseup(e) {
 			return false;
 		}
-
 		keydown(e) {
 			return false;
 		}
-
 		keyup(e) {
 			return false;
-		} // ----------------------
+		}
+
+		// ----------------------
 		// object referency
 		// ----------------------
-
 
 		setReferency(obj, key) {
 			this.objectLink = obj;
 			this.objectKey = key;
 		}
-
 		display(v = false) {
 			this.s[0].visibility = v ? 'visible' : 'hidden';
-		} // ----------------------
+		}
+
+		// ----------------------
 		// resize height 
 		// ----------------------
-
 
 		open() {
 			if (this.isOpen) return;
@@ -2473,44 +2395,39 @@
 			Roots.needResize = true;
 			if (this.openCallback) this.openCallback();
 		}
-
 		close() {
 			if (!this.isOpen) return;
 			this.isOpen = false;
 			Roots.needResize = true;
 			if (this.closeCallback) this.closeCallback();
 		}
-
 		needZone() {
 			Roots.needReZone = true;
 		}
-
 		rezone() {
 			Roots.needReZone = true;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	INPUT
 		// ----------------------
 
-
 		select() {}
-
 		unselect() {}
-
 		setInput(Input) {
 			Roots.setInput(Input, this);
 		}
-
 		upInput(x, down) {
 			return Roots.upInput(x, down);
-		} // ----------------------
+		}
+
+		// ----------------------
 		// special item 
 		// ----------------------
-
 
 		selected(b) {
 			this.isSelect = b || false;
 		}
-
 	}
 
 	class Bool extends Proto {
@@ -2524,7 +2441,6 @@
 			this.inh = o.inh || Math.floor(this.h * 0.8);
 			this.inw = o.inw || 36;
 			let cc = this.colors;
-
 			if (this.model === 0) {
 				let t = Math.floor(this.h * 0.5) - (this.inh - 2) * 0.5;
 				this.c[2] = this.dom('div', this.css.basic + 'background:' + cc.inputBg + '; height:' + (this.inh - 2) + 'px; width:' + this.inw + 'px; top:' + t + 'px; border-radius:10px; border:2px solid ' + cc.back);
@@ -2534,68 +2450,61 @@
 				if (this.c[1] !== undefined) this.c[1].textContent = '';
 				this.c[2] = this.dom('div', this.css.txt + this.css.button + 'top:1px; background:' + cc.button + '; height:' + (this.h - 2) + 'px; border:' + cc.borderSize + 'px solid ' + cc.border + '; border-radius:' + this.radius + 'px;');
 			}
-
 			this.stat = -1;
 			this.init();
 			this.update();
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mousedown(e) {
 			this.value = !this.value;
 			this.update(true);
 			return this.mousemove(e);
 		}
-
 		mousemove(e) {
 			this.cursor('pointer');
 			return this.mode(true);
 		}
-
 		reset() {
 			this.cursor();
 			return this.mode();
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 MODE
 		// ----------------------
-
 
 		mode(over) {
 			let change = false;
 			let cc = this.colors,
-					s = this.s,
-					n,
-					v = this.value;
+				s = this.s,
+				n,
+				v = this.value;
 			if (over) n = v ? 4 : 3;else n = v ? 2 : 1;
-
 			if (this.stat !== n) {
 				this.stat = n;
-
 				if (this.model !== 0) {
 					switch (n) {
 						case 1:
 							s[2].color = cc.text;
 							s[2].background = cc.button;
 							break;
-
 						case 2:
 							s[2].color = cc.textSelect;
 							s[2].background = cc.select;
 							break;
-
 						case 3:
 							s[2].color = cc.textOver;
 							s[2].background = cc.overoff;
 							break;
-
 						case 4:
 							s[2].color = cc.textOver;
 							s[2].background = cc.over;
 							break;
 					}
-
 					this.c[2].innerHTML = v ? this.onName : this.name;
 				} else {
 					switch (n) {
@@ -2604,47 +2513,40 @@
 							s[3].background = cc.button;
 							break;
 						// off out
-
 						case 2:
 							s[2].background = s[2].borderColor = cc.back;
 							s[3].background = cc.textOver;
 							break;
 						// on over
-
 						case 3:
 							s[2].background = s[2].borderColor = cc.back;
 							s[3].background = cc.overoff;
 							break;
 						// off over
-
 						case 4:
 							s[2].background = s[2].borderColor = cc.backoff;
 							s[3].background = cc.textSelect;
 							break;
 						// on out
 					}
-
 					s[3].marginLeft = v ? '17px' : '2px';
 					this.c[1].textContent = v ? this.onName : this.name;
 				}
-
 				change = true;
 			}
-
 			return change;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		update(up) {
 			this.mode();
 			if (up) this.send();
 		}
-
 		rSize() {
 			super.rSize();
 			let s = this.s;
 			let w = this.w - 10 - this.inw;
-
 			if (this.model === 0) {
 				s[2].left = w + 'px';
 				s[3].left = w + 'px';
@@ -2653,7 +2555,6 @@
 				s[2].width = this.sb + 'px';
 			}
 		}
-
 	}
 
 	class Button extends Proto {
@@ -2665,8 +2566,9 @@
 			if (o.values) this.values = o.values;
 			if (!o.values && !o.value) this.txt = '';
 			this.onName = o.onName || null;
-			this.on = false; // force button width
+			this.on = false;
 
+			// force button width
 			this.bw = o.forceWidth || 0;
 			if (o.bw) this.bw = o.bw;
 			this.space = o.space || 3;
@@ -2678,8 +2580,7 @@
 			this.tmp = [];
 			this.stat = [];
 			let sel,
-					cc = this.colors;
-
+				cc = this.colors;
 			for (let i = 0; i < this.lng; i++) {
 				sel = false;
 				if (this.values[i] === this.value && this.isSelectable) sel = true;
@@ -2689,156 +2590,132 @@
 				this.c[i + 2].innerHTML = this.values[i];
 				this.stat[i] = sel ? 3 : 1;
 			}
-
 			if (this.txt === '') this.p = 0;
-
 			if (!o.value && !o.values || this.p === 0) {
 				if (this.c[1] !== undefined) this.c[1].textContent = '';
 			}
-
 			this.init();
 		}
-
 		onOff() {
 			this.on = !this.on;
 			this.label(this.on ? this.onName : this.value);
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return -1;
 			let i = this.lng;
 			let t = this.tmp;
-
 			while (i--) {
 				if (l.x > t[i][0] && l.x < t[i][2]) return i;
 			}
-
 			return -1;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mouseup(e) {
 			if (!this.isDown) return false;
 			this.isDown = false;
-
 			if (this.res !== -1) {
 				if (this.value === this.values[this.res] && this.unselectable) this.value = '';else this.value = this.values[this.res];
 				if (this.onName !== null) this.onOff();
 				this.send();
 			}
-
 			return this.mousemove(e);
 		}
-
 		mousedown(e) {
 			if (this.isDown) return false;
 			this.isDown = true;
 			return this.mousemove(e);
 		}
-
 		mousemove(e) {
 			let up = false;
 			this.res = this.testZone(e);
-
 			if (this.res !== -1) {
 				this.cursor('pointer');
 				up = this.modes(this.isDown ? 3 : 2, this.res);
 			} else {
 				up = this.reset();
 			}
-
 			return up;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		modes(N = 1, id = -1) {
 			let i = this.lng,
-					w,
-					n,
-					r = false;
-
+				w,
+				n,
+				r = false;
 			while (i--) {
 				n = N;
 				w = this.isSelectable ? this.values[i] === this.value : false;
-
 				if (i === id) {
 					if (w && n === 2) n = 3;
 				} else {
 					n = 1;
 					if (w) n = 4;
-				} //if( this.mode( n, i ) ) r = true
+				}
 
-
+				//if( this.mode( n, i ) ) r = true
 				r = this.mode(n, i);
 			}
-
 			return r;
 		}
-
 		mode(n, id) {
 			//if(!this.s) return false
+
 			let change = false;
 			let cc = this.colors,
-					s = this.s;
+				s = this.s;
 			let i = id + 2;
-
 			if (this.stat[id] !== n) {
 				this.stat[id] = n;
-
 				switch (n) {
 					case 1:
 						s[i].color = cc.text;
 						s[i].background = cc.button;
 						break;
-
 					case 2:
 						s[i].color = cc.textOver;
 						s[i].background = cc.overoff;
 						break;
-
 					case 3:
 						s[i].color = cc.textOver;
 						s[i].background = cc.over;
 						break;
-
 					case 4:
 						s[i].color = cc.textSelect;
 						s[i].background = cc.select;
 						break;
 				}
-
 				change = true;
 			}
-
 			return change;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		reset() {
 			this.res = -1;
 			this.cursor();
 			return this.modes();
 		}
-
 		label(string, n) {
 			n = n || 2;
 			this.c[n].textContent = string;
 		}
-
 		switchValues(n, string) {
 			this.c[n + 2].innerHTML = this.values[n] = string;
 		}
-
 		icon(string, y = 0, n = 2) {
 			//if(y) this.s[n].margin = ( y ) +'px 0px';
 			this.s[n].padding = y + 'px 0px';
 			this.c[n].innerHTML = string;
 			return this;
 		}
-
 		rSize() {
 			super.rSize();
 			let s = this.s;
@@ -2847,15 +2724,12 @@
 			let i = this.lng;
 			let sx = this.colors.sx; //this.space;
 			//let size = Math.floor( ( w-(dc*(i-1)) ) / i );
-
 			let size = (w - sx * (i - 1)) / i;
-
 			if (this.bw) {
-				size = this.bw < size ? this.bw : size; //d = Math.floor((this.w-( (size * i) + (dc * (i-1)) ))*0.5)
-
+				size = this.bw < size ? this.bw : size;
+				//d = Math.floor((this.w-( (size * i) + (dc * (i-1)) ))*0.5)
 				d = (this.w - (size * i + sx * (i - 1))) * 0.5;
 			}
-
 			while (i--) {
 				//this.tmp[i] = [ Math.floor( d + ( size * i ) + ( dc * i )), size ];
 				this.tmp[i] = [d + size * i + sx * i, size];
@@ -2864,7 +2738,6 @@
 				s[i + 2].width = this.tmp[i][1] + 'px';
 			}
 		}
-
 	}
 
 	class Circular extends Proto {
@@ -2883,18 +2756,18 @@
 			this.h = o.h || this.w + 10;
 			this.c[0].style.width = this.w + 'px';
 			this.c[0].style.display = 'block';
-
 			if (this.c[1] !== undefined) {
 				this.c[1].style.width = '100%';
 				this.c[1].style.justifyContent = 'center';
 				this.top = 10;
 				this.h += 10;
 			}
-
 			this.percent = 0;
 			this.cmode = 0;
 			let cc = this.colors;
-			this.c[2] = this.dom('div', this.css.txt + 'justify-content:center; top:' + (this.h - 20) + 'px; width:100%; color:' + cc.text); // svg
+			this.c[2] = this.dom('div', this.css.txt + 'justify-content:center; top:' + (this.h - 20) + 'px; width:100%; color:' + cc.text);
+
+			// svg
 
 			this.c[3] = this.getCircular();
 			this.setSvg(this.c[3], 'stroke', cc.back, 0);
@@ -2910,53 +2783,49 @@
 			this.init();
 			this.update();
 		}
-
 		mode(mode) {
 			if (this.cmode === mode) return false;
 			let cc = this.colors;
 			let color;
-
 			switch (mode) {
 				case 0:
 					// base
+
 					this.s[2].color = cc.text;
 					this.setSvg(this.c[3], 'stroke', cc.back, 0);
 					color = this.model > 0 ? Tools.pack(Tools.lerpColor(Tools.unpack(Tools.ColorLuma(cc.text, -0.75)), Tools.unpack(cc.text), this.percent)) : cc.text;
 					this.setSvg(this.c[3], 'stroke', color, 1);
 					break;
-
 				case 1:
 					// down
+
 					this.s[2].color = cc.textOver;
 					this.setSvg(this.c[3], 'stroke', cc.backoff, 0);
 					color = this.model > 0 ? Tools.pack(Tools.lerpColor(Tools.unpack(Tools.ColorLuma(cc.text, -0.75)), Tools.unpack(cc.text), this.percent)) : cc.textOver;
 					this.setSvg(this.c[3], 'stroke', color, 1);
 					break;
 			}
-
 			this.cmode = mode;
 			return true;
 		}
-
 		reset() {
 			this.isDown = false;
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			if (l.y <= this.c[1].offsetHeight) return 'title';else if (l.y > this.h - this.c[2].offsetHeight) return 'text';else return 'circular';
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mouseup(e) {
 			this.isDown = false;
 			this.sendEnd();
 			return this.mode(0);
 		}
-
 		mousedown(e) {
 			this.isDown = true;
 			this.old = this.value;
@@ -2964,27 +2833,25 @@
 			this.mousemove(e);
 			return this.mode(1);
 		}
-
 		mousemove(e) {
-			if (!this.isDown) return; //console.log('over')
+			if (!this.isDown) return;
+
+			//console.log('over')
 
 			let off = this.offset;
 			off.x = this.w * 0.5 - (e.clientX - this.zone.x);
 			off.y = this.diam * 0.5 - (e.clientY - this.zone.y - this.ytop);
 			this.r = off.angle() - this.pi90;
 			this.r = (this.r % this.twoPi + this.twoPi) % this.twoPi;
-
 			if (this.oldr !== null) {
 				let dif = this.r - this.oldr;
 				this.r = Math.abs(dif) > Math.PI ? this.oldr : this.r;
 				if (dif > 6) this.r = 0;
 				if (dif < -6) this.r = this.twoPi;
 			}
-
 			let steps = 1 / this.twoPi;
 			let value = this.r * steps;
 			let n = this.range * value + this.min - this.old;
-
 			if (n >= this.step || n <= this.step) {
 				n = ~~(n / this.step);
 				this.value = this.numValue(this.old + n * this.step);
@@ -2993,28 +2860,24 @@
 				this.oldr = this.r;
 			}
 		}
-
 		wheel(e) {
 			let name = this.testZone(e);
-
 			if (name === 'circular') {
 				let v = this.value - this.step * e.delta;
-
 				if (v > this.max) {
 					v = this.isCyclic ? this.min : this.max;
 				} else if (v < this.min) {
 					v = this.isCyclic ? this.max : this.min;
 				}
-
 				this.setValue(v);
 				this.old = v;
 				this.update(true);
 				return true;
 			}
-
 			return false;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		makePath() {
 			let r = 40;
@@ -3025,59 +2888,60 @@
 			let big = a > Math.PI ? 1 : 0;
 			return "M " + (r + d) + "," + d + " A " + r + "," + r + " 0 " + big + " 1 " + x2 + "," + y2;
 		}
-
 		update(up) {
 			this.c[2].textContent = this.value;
 			this.percent = (this.value - this.min) / this.range;
 			this.setSvg(this.c[3], 'd', this.makePath(), 1);
-
 			if (this.model > 0) {
 				let cc = this.colors;
 				let color = Tools.pack(Tools.lerpColor(Tools.unpack(Tools.ColorLuma(cc.text, -0.75)), Tools.unpack(cc.text), this.percent));
 				this.setSvg(this.c[3], 'stroke', color, 1);
 			}
-
 			if (up) this.send();
 		}
-
 	}
 
 	class Color extends Proto {
 		constructor(o = {}) {
-			super(o); //this.autoHeight = true;
+			super(o);
+
+			//this.autoHeight = true;
 
 			this.ctype = o.ctype || 'hex';
 			this.wfixe = 256;
 			this.cw = this.sb > 256 ? 256 : this.sb;
-			if (o.cw != undefined) this.cw = o.cw; // color up or down
+			if (o.cw != undefined) this.cw = o.cw;
 
+			// color up or down
 			this.side = o.side || 'down';
 			this.up = this.side === 'down' ? 0 : 1;
 			this.baseH = this.h;
 			this.offset = new V2();
 			this.decal = new V2();
 			this.pp = new V2();
-			let cc = this.colors; // this.c[2] = this.dom( 'div', this.css.txt + this.css.middle + 'top:1px; height:'+(this.h-2)+'px;' + 'border-radius:'+this.radius+'px; text-shadow:none; border:'+cc.borderSize+'px solid '+cc.border+';' )
+			let cc = this.colors;
 
-			this.c[2] = this.dom('div', `${this.css.txt} ${this.css.middle} top:1px; height:${this.h - 2}px; border-radius:${this.radius}px; text-shadow:none; border:${cc.borderSize}px solid ${cc.border};`); //this.s[2] = this.c[2].style;
+			// this.c[2] = this.dom( 'div', this.css.txt + this.css.middle + 'top:1px; height:'+(this.h-2)+'px;' + 'border-radius:'+this.radius+'px; text-shadow:none; border:'+cc.borderSize+'px solid '+cc.border+';' )
+
+			this.c[2] = this.dom('div', `${this.css.txt} ${this.css.middle} top:1px; height:${this.h - 2}px; border-radius:${this.radius}px; text-shadow:none; border:${cc.borderSize}px solid ${cc.border};`);
+			//this.s[2] = this.c[2].style;
+
 			//this.s[2].textShadow = 'none'
 
 			/*if( this.up ){
 					this.s[2].top = 'auto';
 					this.s[2].bottom = '2px';
 			}*/
-			//this.c[0].style.textAlign = 'center';
 
+			//this.c[0].style.textAlign = 'center';
 			this.c[0].style.display = 'block';
 			this.c[3] = this.getColorRing();
 			this.c[3].style.visibility = 'hidden';
 			this.hsl = null;
 			this.value = '#ffffff';
-
 			if (o.value !== undefined) {
 				if (o.value instanceof Array) this.value = Tools.rgbToHex(o.value);else if (!isNaN(o.value)) this.value = Tools.hexToHtml(o.value);else this.value = o.value;
 			}
-
 			this.bcolor = null;
 			this.isDown = false;
 			this.fistDown = false;
@@ -3090,55 +2954,51 @@
 			this.setColor(this.value);
 			if (o.open !== undefined) this.open();
 		}
-
 		testZone(mx, my) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
-
 			if (this.up && this.isOpen) {
 				if (l.y > this.wfixe) return 'title';else return 'color';
 			} else {
 				if (l.y < this.baseH + 2) return 'title';else if (this.isOpen) return 'color';
 			}
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mouseup(e) {
 			this.isDown = false;
 			this.d = 256;
 		}
-
 		mousedown(e) {
-			let name = this.testZone(e.clientX, e.clientY); //if( !name ) return;
+			let name = this.testZone(e.clientX, e.clientY);
 
+			//if( !name ) return;
 			if (name === 'title') {
 				if (!this.isOpen) this.open();else this.close();
 				return true;
 			}
-
 			if (name === 'color') {
 				this.isDown = true;
 				this.fistDown = true;
 				this.mousemove(e);
 			}
 		}
-
 		mousemove(e) {
 			let name = this.testZone(e.clientX, e.clientY);
 			let off,
-					d,
-					hue,
-					sat,
-					lum,
-					rad,
-					x,
-					y,
-					rr,
-					T = Tools;
+				d,
+				hue,
+				sat,
+				lum,
+				rad,
+				x,
+				y,
+				rr,
+				T = Tools;
 			if (name === 'title') this.cursor('pointer');
-
 			if (name === 'color') {
 				off = this.offset;
 				off.x = e.clientX - (this.zone.x + this.decal.x + this.mid);
@@ -3147,21 +3007,21 @@
 				rr = off.angle();
 				if (rr < 0) rr += 2 * T.PI;
 				if (d < 128) this.cursor('crosshair');else if (!this.isDown) this.cursor();
-
 				if (this.isDown) {
 					if (this.fistDown) {
 						this.d = d;
 						this.fistDown = false;
 					}
-
 					if (this.d < 128) {
 						if (this.d > this.tr) {
 							// outside hue
+
 							hue = (rr + T.pi90) / T.TwoPI;
 							this.hue = (hue + 1) % 1;
 							this.setHSL([(hue + 1) % 1, this.hsl[1], this.hsl[2]]);
 						} else {
 							// triangle
+
 							x = off.x * this.ratio;
 							y = off.y * this.ratio;
 							let rr = this.hue * T.TwoPI + T.PI;
@@ -3169,12 +3029,11 @@
 							rad = Math.atan2(-y, x);
 							if (rad < 0) rad += 2 * T.PI;
 							let rad0 = (rad + T.pi90 + T.TwoPI + rr) % T.TwoPI,
-									rad1 = rad0 % (2 / 3 * T.PI) - T.pi60,
-									a = 0.5 * this.tr,
-									b = Math.tan(rad1) * a,
-									r = Math.sqrt(x * x + y * y),
-									maxR = Math.sqrt(a * a + b * b);
-
+								rad1 = rad0 % (2 / 3 * T.PI) - T.pi60,
+								a = 0.5 * this.tr,
+								b = Math.tan(rad1) * a,
+								r = Math.sqrt(x * x + y * y),
+								maxR = Math.sqrt(a * a + b * b);
 							if (r > maxR) {
 								let dx = Math.tan(rad1) * r;
 								let rad2 = Math.atan(dx / maxR);
@@ -3184,7 +3043,6 @@
 								b = Math.tan(rad1) * a;
 								r = maxR = Math.sqrt(a * a + b * b);
 							}
-
 							lum = Math.sin(rad0) * r / this.tsl + 0.5;
 							let w = 1 - Math.abs(lum - 0.5) * 2;
 							sat = (Math.cos(rad0) * r + this.tr / 2) / (1.5 * this.tr) / w;
@@ -3194,39 +3052,36 @@
 					}
 				}
 			}
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		setHeight() {
 			this.h = this.isOpen ? this.wfixe + this.baseH + 5 : this.baseH;
 			this.s[0].height = this.h + 'px';
 			this.zone.h = this.h;
 		}
-
 		parentHeight(t) {
 			if (this.group !== null) this.group.calc(t);else if (this.isUI) this.main.calc(t);
 		}
-
 		open() {
 			super.open();
 			this.setHeight();
 			if (this.up) this.zone.y -= this.wfixe + 5;
 			let t = this.h - this.baseH;
-			this.s[3].visibility = 'visible'; //this.s[3].display = 'block';
-
+			this.s[3].visibility = 'visible';
+			//this.s[3].display = 'block';
 			this.parentHeight(t);
 		}
-
 		close() {
 			super.close();
 			if (this.up) this.zone.y += this.wfixe + 5;
 			let t = this.h - this.baseH;
 			this.setHeight();
-			this.s[3].visibility = 'hidden'; //this.s[3].display = 'none';
-
+			this.s[3].visibility = 'hidden';
+			//this.s[3].display = 'none';
 			this.parentHeight(-t);
 		}
-
 		update(up) {
 			let cc = Tools.rgbToHex(Tools.hslToRgb([this.hsl[0], 1, 0.5]));
 			this.moveMarkers();
@@ -3242,16 +3097,13 @@
 			if (this.ctype === 'hex') this.send(Tools.htmlToHex(this.value));
 			if (this.ctype === 'html') this.send();
 		}
-
 		setValue(v) {
 			if (v instanceof Array) this.value = Tools.rgbToHex(v);else if (!isNaN(v)) this.value = Tools.hexToHtml(v);else this.value = v;
 			this.setColor(this.value);
 			this.update();
 		}
-
 		setColor(color) {
 			let unpack = Tools.unpack(color);
-
 			if (this.bcolor !== color && unpack) {
 				this.bcolor = color;
 				this.rgb = unpack;
@@ -3259,10 +3111,8 @@
 				this.hue = this.hsl[0];
 				this.update();
 			}
-
 			return this;
 		}
-
 		setHSL(hsl) {
 			this.hsl = hsl;
 			this.rgb = Tools.hslToRgb(hsl);
@@ -3270,7 +3120,6 @@
 			this.update(true);
 			return this;
 		}
-
 		moveMarkers() {
 			let p = this.pp;
 			let T = Tools;
@@ -3290,11 +3139,13 @@
 			let vx = Math.cos(h + third) * r;
 			let vy = -Math.sin(h + third) * r;
 			let mx = (sx + vx) / 2,
-					my = (sy + vy) / 2;
+				my = (sy + vy) / 2;
 			a = (1 - 2 * Math.abs(l - .5)) * s;
 			let x = sx + (vx - sx) * l + (hx - mx) * a;
 			let y = sy + (vy - sy) * l + (hy - my) * a;
-			p.set(x, y).addScalar(128); //let ff = (1-l)*255;
+			p.set(x, y).addScalar(128);
+
+			//let ff = (1-l)*255;
 			// this.setSvg( this.c[3], 'stroke', 'rgb('+ff+','+ff+','+ff+')', 3 );
 
 			this.setSvg(this.c[3], 'transform', 'rotate(' + angle + ' )', 2);
@@ -3304,42 +3155,45 @@
 			this.setSvg(this.c[3], 'stroke', this.invert ? '#fff' : '#000', 3);
 			this.setSvg(this.c[3], 'fill', this.bcolor, 3);
 		}
-
 		rSize() {
 			//Proto.prototype.rSize.call( this );
 			super.rSize();
 			let s = this.s;
 			s[2].width = this.sb + 'px';
-			s[2].left = this.sa + 'px'; //console.log(this.sb)
+			s[2].left = this.sa + 'px';
+
+			//console.log(this.sb)
 
 			this.cw = this.sb > 256 ? 256 : this.sb;
 			this.rSizeColor(this.cw);
-			this.decal.x = Math.floor((this.w - this.wfixe) * 0.5); //s[3].left = this.decal.x + 'px';
+			this.decal.x = Math.floor((this.w - this.wfixe) * 0.5);
+			//s[3].left = this.decal.x + 'px';
 		}
-
 		rSizeColor(w) {
 			if (w === this.wfixe) return;
 			this.wfixe = w;
-			let s = this.s; //this.decal.x = Math.floor((this.w - this.wfixe) * 0.5);
+			let s = this.s;
 
+			//this.decal.x = Math.floor((this.w - this.wfixe) * 0.5);
 			this.decal.y = this.side === 'up' ? 2 : this.baseH + 2;
 			this.mid = Math.floor(this.wfixe * 0.5);
 			this.setSvg(this.c[3], 'viewBox', '0 0 ' + this.wfixe + ' ' + this.wfixe);
 			s[3].width = this.wfixe + 'px';
-			s[3].height = this.wfixe + 'px'; //s[3].left = this.decal.x + 'px';
-
+			s[3].height = this.wfixe + 'px';
+			//s[3].left = this.decal.x + 'px';
 			s[3].top = this.decal.y + 'px';
 			this.ratio = 256 / this.wfixe;
 			this.square = 1 / (60 * (this.wfixe / 256));
 			this.setHeight();
 		}
-
 	}
 
 	class Fps extends Proto {
 		constructor(o = {}) {
 			super(o);
-			this.round = Math.round; //this.autoHeight = true;
+			this.round = Math.round;
+
+			//this.autoHeight = true;
 
 			this.baseH = this.h;
 			this.hplus = o.hplus || 50;
@@ -3348,7 +3202,9 @@
 			this.precision = o.precision || 0;
 			this.custom = o.custom || false;
 			this.names = o.names || ['FPS', 'MS'];
-			let cc = o.cc || ['220,220,220', '255,255,0']; // this.divid = [ 100, 100, 100 ];
+			let cc = o.cc || ['220,220,220', '255,255,0'];
+
+			// this.divid = [ 100, 100, 100 ];
 			// this.multy = [ 30, 30, 30 ];
 
 			this.adding = o.adding || false;
@@ -3357,33 +3213,30 @@
 			this.values = [];
 			this.points = [];
 			this.textDisplay = [];
-
 			if (!this.custom) {
 				this.now = Roots.getTime();
 				this.startTime = 0; //this.now()
-
 				this.prevTime = 0; //this.startTime;
-
 				this.frames = 0;
 				this.ms = 0;
 				this.fps = 0;
 				this.mem = 0;
 				this.mm = 0;
-				this.isMem = self.performance && self.performance.memory ? true : false; // this.divid = [ 100, 200, 1 ];
+				this.isMem = self.performance && self.performance.memory ? true : false;
+
+				// this.divid = [ 100, 200, 1 ];
 				// this.multy = [ 30, 30, 30 ];
 
 				if (this.isMem) {
 					this.names.push('MEM');
 					cc.push('0,255,255');
 				}
-
 				this.txt = o.name || 'Fps';
 			}
-
 			let fltop = Math.floor(this.h * 0.5) - 3;
 			const ccc = this.colors;
-			this.c[1].textContent = this.txt; //this.c[1].innerHTML = '&#160;' + this.txt
-
+			this.c[1].textContent = this.txt;
+			//this.c[1].innerHTML = '&#160;' + this.txt
 			this.c[0].style.cursor = 'pointer';
 			this.c[0].style.pointerEvents = 'auto';
 			let panelCss = 'display:none; left:10px; top:' + this.h + 'px; height:' + (this.hplus - 8) + 'px; box-sizing:border-box; background: rgba(0, 0, 0, 0.2); border:1px solid ' + ccc.border + ';';
@@ -3392,46 +3245,47 @@
 			this.c[2].setAttribute('viewBox', '0 0 ' + this.res + ' 50');
 			this.c[2].setAttribute('height', '100%');
 			this.c[2].setAttribute('width', '100%');
-			this.c[2].setAttribute('preserveAspectRatio', 'none'); //this.dom( 'path', null, { fill:'rgba(255,255,0,0.3)', 'stroke-width':1, stroke:'#FF0', 'vector-effect':'non-scaling-stroke' }, this.c[2] );
-			//this.dom( 'path', null, { fill:'rgba(0,255,255,0.3)', 'stroke-width':1, stroke:'#0FF', 'vector-effect':'non-scaling-stroke' }, this.c[2] );
-			// arrow
+			this.c[2].setAttribute('preserveAspectRatio', 'none');
 
+			//this.dom( 'path', null, { fill:'rgba(255,255,0,0.3)', 'stroke-width':1, stroke:'#FF0', 'vector-effect':'non-scaling-stroke' }, this.c[2] );
+			//this.dom( 'path', null, { fill:'rgba(0,255,255,0.3)', 'stroke-width':1, stroke:'#0FF', 'vector-effect':'non-scaling-stroke' }, this.c[2] );
+
+			// arrow
 			this.c[3] = this.dom('path', this.css.basic + 'position:absolute; width:6px; height:6px; left:0; top:' + fltop + 'px;', {
 				d: this.svgs.g1,
 				fill: ccc.text,
 				stroke: 'none'
-			}); //this.c[3] = this.dom( 'path', this.css.basic + 'position:absolute; width:10px; height:10px; left:4px; top:'+fltop+'px;', { d:this.svgs.arrow, fill:this.colors.text, stroke:'none'});
+			});
+			//this.c[3] = this.dom( 'path', this.css.basic + 'position:absolute; width:10px; height:10px; left:4px; top:'+fltop+'px;', { d:this.svgs.arrow, fill:this.colors.text, stroke:'none'});
+
 			// result test
+			this.c[4] = this.dom('div', this.css.txt + 'position:absolute; left:10px; top:' + (this.h + 2) + 'px; display:none; width:100%; text-align:center;');
 
-			this.c[4] = this.dom('div', this.css.txt + 'position:absolute; left:10px; top:' + (this.h + 2) + 'px; display:none; width:100%; text-align:center;'); // bottom line
-
+			// bottom line
 			if (o.bottomLine) this.c[4] = this.dom('div', this.css.basic + 'width:100%; bottom:0px; height:1px; background: rgba(255, 255, 255, 0.2);');
 			this.isShow = false;
-			let s = this.s; //s[1].marginLeft = '10px';
+			let s = this.s;
 
+			//s[1].marginLeft = '10px';
 			s[1].lineHeight = this.h - 4;
-			s[1].color = ccc.text; //s[1].paddingLeft = '18px';
+			s[1].color = ccc.text;
+			//s[1].paddingLeft = '18px';
 			//s[1].fontWeight = 'bold';
 
 			if (this.radius !== 0) s[0].borderRadius = this.radius + 'px';
 			if (this.colors.gborder !== 'none') s[0].border = '1px solid ' + ccc.gborder;
 			let j = 0;
-
 			for (j = 0; j < this.names.length; j++) {
 				let base = [];
 				let i = this.res + 1;
-
 				while (i--) base.push(50);
-
 				this.range[j] = 1 / this.range[j] * 49;
 				this.points.push(base);
-				this.values.push(0); //	this.dom( 'path', null, { fill:'rgba('+cc[j]+',0.5)', 'stroke-width':1, stroke:'rgba('+cc[j]+',1)', 'vector-effect':'non-scaling-stroke' }, this.c[2] );
-
+				this.values.push(0);
+				//	this.dom( 'path', null, { fill:'rgba('+cc[j]+',0.5)', 'stroke-width':1, stroke:'rgba('+cc[j]+',1)', 'vector-effect':'non-scaling-stroke' }, this.c[2] );
 				this.textDisplay.push("<span style='color:rgb(" + cc[j] + ")'> " + this.names[j] + " ");
 			}
-
 			j = this.names.length;
-
 			while (j--) {
 				this.dom('path', null, {
 					fill: 'rgba(' + cc[j] + ',' + this.alpha + ')',
@@ -3440,16 +3294,20 @@
 					'vector-effect': 'non-scaling-stroke'
 				}, this.c[2]);
 			}
+			this.init();
 
-			this.init(); //if( this.isShow ) this.show();
-		} // ----------------------
+			//if( this.isShow ) this.show();
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
 
-
 		mousedown(e) {
 			if (this.isShow) this.close();else this.open();
-		} // ----------------------
+		}
+
+		// ----------------------
 
 		/*mode: function ( mode ) {
 					let s = this.s;
@@ -3469,42 +3327,33 @@
 					}
 		},*/
 
-
 		tick(v) {
 			this.values = v;
 			if (!this.isShow) return;
 			this.drawGraph();
 			this.upText();
 		}
-
 		makePath(point) {
 			let p = '';
 			p += 'M ' + -1 + ' ' + 50;
-
 			for (let i = 0; i < this.res + 1; i++) {
 				p += ' L ' + i + ' ' + point[i];
 			}
-
 			p += ' L ' + (this.res + 1) + ' ' + 50;
 			return p;
 		}
-
 		upText(val) {
 			let v = val || this.values,
-					t = '';
-
+				t = '';
 			for (let j = 0, lng = this.names.length; j < lng; j++) t += this.textDisplay[j] + v[j].toFixed(this.precision) + '</span>';
-
 			this.c[4].innerHTML = t;
 		}
-
 		drawGraph() {
 			let svg = this.c[2];
 			let i = this.names.length,
-					v,
-					old = 0,
-					n = 0;
-
+				v,
+				old = 0,
+				n = 0;
 			while (i--) {
 				if (this.adding) v = (this.values[n] + old) * this.range[n];else v = this.values[n] * this.range[n];
 				this.points[n].shift();
@@ -3514,55 +3363,47 @@
 				n++;
 			}
 		}
-
 		open() {
 			super.open();
 			this.h = this.hplus + this.baseH;
 			this.setSvg(this.c[3], 'd', this.svgs.g2);
-
 			if (this.group !== null) {
 				this.group.calc(this.hplus);
 			} else if (this.isUI) this.main.calc(this.hplus);
-
 			this.s[0].height = this.h + 'px';
 			this.s[2].display = 'block';
 			this.s[4].display = 'block';
 			this.isShow = true;
 			if (!this.custom) Roots.addListen(this);
 		}
-
 		close() {
 			super.close();
 			this.h = this.baseH;
 			this.setSvg(this.c[3], 'd', this.svgs.g1);
-
 			if (this.group !== null) {
 				this.group.calc(-this.hplus);
 			} else if (this.isUI) this.main.calc(-this.hplus);
-
 			this.s[0].height = this.h + 'px';
 			this.s[2].display = 'none';
 			this.s[4].display = 'none';
 			this.isShow = false;
 			if (!this.custom) Roots.removeListen(this);
 			this.c[4].innerHTML = '';
-		} ///// AUTO FPS //////
+		}
 
+		///// AUTO FPS //////
 
 		begin() {
 			this.startTime = this.now();
 		}
-
 		end() {
 			let time = this.now();
 			this.ms = time - this.startTime;
 			this.frames++;
-
 			if (time > this.prevTime + 1000) {
 				this.fps = this.round(this.frames * 1000 / (time - this.prevTime));
 				this.prevTime = time;
 				this.frames = 0;
-
 				if (this.isMem) {
 					let heapSize = performance.memory.usedJSHeapSize;
 					let heapSizeLimit = performance.memory.jsHeapSizeLimit;
@@ -3570,17 +3411,14 @@
 					this.mm = heapSize / heapSizeLimit;
 				}
 			}
-
 			this.values = [this.fps, this.ms, this.mm];
 			this.drawGraph();
 			this.upText([this.fps, this.ms, this.mem]);
 			return time;
 		}
-
 		listening() {
 			if (!this.custom) this.startTime = this.end();
 		}
-
 		rSize() {
 			let s = this.s;
 			let w = this.w;
@@ -3591,7 +3429,6 @@
 			s[2].width = w - 20 + 'px';
 			s[4].width = w - 20 + 'px';
 		}
-
 	}
 
 	class Graph extends Proto {
@@ -3602,7 +3439,9 @@
 			this.precision = o.precision !== undefined ? o.precision : 2;
 			this.multiplicator = o.multiplicator || 1;
 			this.neg = o.neg || false;
-			this.line = o.line !== undefined ? o.line : true; //if(this.neg)this.multiplicator*=2;
+			this.line = o.line !== undefined ? o.line : true;
+
+			//if(this.neg)this.multiplicator*=2;
 
 			this.autoWidth = o.autoWidth !== undefined ? o.autoWidth : true;
 			this.isNumber = false;
@@ -3611,28 +3450,29 @@
 			this.rh = this.h - 10;
 			this.top = 0;
 			this.c[0].style.width = this.w + 'px';
-
 			if (this.c[1] !== undefined) {
 				// with title
-				this.c[1].style.width = this.w + 'px';
 
+				this.c[1].style.width = this.w + 'px';
 				if (!this.autoWidth) {
 					this.c[1].style.width = '100%';
 					this.c[1].style.justifyContent = 'center';
-				} //this.c[1].style.background = '#ff0000';
+				}
+
+				//this.c[1].style.background = '#ff0000';
 				//this.c[1].style.textAlign = 'center';
-
-
 				this.top = 10;
 				this.h += 10;
 			}
-
 			this.gh = this.rh - 28;
-			this.gw = this.w - 28; //this.c[2] = this.dom( 'div', this.css.txt + 'justify-content:center; text-align: justify; column-count:'+this.lng+'; top:'+(this.h-20)+'px; width:100%; color:'+ this.colors.text );
+			this.gw = this.w - 28;
+
+			//this.c[2] = this.dom( 'div', this.css.txt + 'justify-content:center; text-align: justify; column-count:'+this.lng+'; top:'+(this.h-20)+'px; width:100%; color:'+ this.colors.text );
+
 			//let colum = 'column-count:'+this.lng+'; column:'+this.lng+'; break-inside: column; top:'
+			this.c[2] = this.dom('div', this.css.txt + 'display:block; text-align:center; padding:0px 0px; top:' + (this.h - 20) + 'px; left:14px; width:' + this.gw + 'px;	color:' + this.colors.text);
 
-			this.c[2] = this.dom('div', this.css.txt + 'display:block; text-align:center; padding:0px 0px; top:' + (this.h - 20) + 'px; left:14px; width:' + this.gw + 'px;	color:' + this.colors.text); //this.c[2].textContent = this.value;
-
+			//this.c[2].textContent = this.value;
 			this.c[2].innerHTML = this.valueToHtml();
 			let svg = this.dom('svg', this.css.basic, {
 				viewBox: '0 0 ' + this.w + ' ' + this.rh,
@@ -3666,7 +3506,6 @@
 			let t = [];
 			this.cMode = [];
 			this.v = [];
-
 			for (let i = 0; i < this.lng; i++) {
 				t[i] = [14 + i * this.iw + i * 4, this.iw];
 				t[i][2] = t[i][0] + t[i][1];
@@ -3681,107 +3520,91 @@
 					'fill-opacity': 0.3
 				}, svg);
 			}
-
 			this.tmp = t;
-			this.c[3] = svg; //console.log(this.w)
+			this.c[3] = svg;
+
+			//console.log(this.w)
 
 			this.init();
-
 			if (this.c[1] !== undefined) {
 				this.c[1].style.top = 0 + 'px';
 				this.c[1].style.height = 20 + 'px';
 				this.s[1].lineHeight = 20 - 5 + 'px';
 			}
-
 			this.update(false);
 		}
-
 		setValue(value) {
 			this.value = value;
 			this.lng = this.value.length;
-
 			for (var i = 0; i < this.lng; i++) {
 				if (this.neg) this.v[i] = (1 + value[i] / this.multiplicator) * 0.5;else this.v[i] = value[i] / this.multiplicator;
 			}
-
 			this.update();
 		}
-
 		valueToHtml() {
 			let i = this.lng,
-					n = 0,
-					r = '<table style="width:100%;"><tr>';
+				n = 0,
+				r = '<table style="width:100%;"><tr>';
 			let w = 100 / this.lng;
 			let style = 'width:' + w + '%;'; //' text-align:center;'
-
 			while (i--) {
 				if (n === this.lng - 1) r += '<td style=' + style + '>' + this.value[n] + '</td></tr></table>';else r += '<td style=' + style + '>' + this.value[n] + '</td>';
 				n++;
 			}
-
 			return r;
 		}
-
 		updateSVG() {
 			if (this.line) this.setSvg(this.c[3], 'd', this.makePath(), 0);
-
 			for (let i = 0; i < this.lng; i++) {
 				this.setSvg(this.c[3], 'height', this.v[i] * this.gh, i + 2);
 				this.setSvg(this.c[3], 'y', 14 + (this.gh - this.v[i] * this.gh), i + 2);
 				if (this.neg) this.value[i] = ((this.v[i] * 2 - 1) * this.multiplicator).toFixed(this.precision) * 1;else this.value[i] = (this.v[i] * this.multiplicator).toFixed(this.precision) * 1;
-			} //this.c[2].textContent = this.value;
+			}
 
-
+			//this.c[2].textContent = this.value;
 			this.c[2].innerHTML = this.valueToHtml();
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			let i = this.lng;
 			let t = this.tmp;
-
 			if (l.y > this.top && l.y < this.h - 20) {
 				while (i--) {
 					if (l.x > t[i][0] && l.x < t[i][2]) return i;
 				}
 			}
-
 			return '';
 		}
-
 		mode(n, name) {
 			if (n === this.cMode[name]) return false;
 			let a;
-
 			switch (n) {
 				case 0:
 					a = 0.3;
 					break;
-
 				case 1:
 					a = 0.6;
 					break;
-
 				case 2:
 					a = 1;
 					break;
 			}
-
 			this.reset();
 			this.setSvg(this.c[3], 'fill-opacity', a, name + 2);
 			this.cMode[name] = n;
 			return true;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
 
-
 		reset() {
-			let nup = false; //this.isDown = false;
+			let nup = false;
+			//this.isDown = false;
 
 			let i = this.lng;
-
 			while (i--) {
 				if (this.cMode[i] !== 0) {
 					this.cMode[i] = 0;
@@ -3789,52 +3612,48 @@
 					nup = true;
 				}
 			}
-
 			return nup;
 		}
-
 		mouseup(e) {
 			this.isDown = false;
 			if (this.current !== -1) return this.reset();
 		}
-
 		mousedown(e) {
 			this.isDown = true;
 			return this.mousemove(e);
 		}
-
 		mousemove(e) {
 			let nup = false;
 			let name = this.testZone(e);
-
 			if (name === '') {
-				nup = this.reset(); //this.cursor();
+				nup = this.reset();
+				//this.cursor();
 			} else {
-				nup = this.mode(this.isDown ? 2 : 1, name); //this.cursor( this.current !== -1 ? 'move' : 'pointer' );
-
+				nup = this.mode(this.isDown ? 2 : 1, name);
+				//this.cursor( this.current !== -1 ? 'move' : 'pointer' );
 				if (this.isDown) {
 					this.v[name] = this.clamp(1 - (e.clientY - this.zone.y - this.ytop - 10) / this.gh, 0, 1);
 					this.update(true);
 				}
 			}
-
 			return nup;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		update(up) {
 			this.updateSVG();
 			if (up) this.send();
 		}
-
 		makePath() {
 			let p = "",
-					h,
-					w,
-					wn,
-					wm,
-					ow,
-					oh; //let g = this.iw*0.5
+				h,
+				w,
+				wn,
+				wm,
+				ow,
+				oh;
+			//let g = this.iw*0.5
 
 			for (let i = 0; i < this.lng; i++) {
 				h = 14 + (this.gh - this.v[i] * this.gh);
@@ -3846,10 +3665,8 @@
 				ow = wn;
 				oh = h;
 			}
-
 			return p;
 		}
-
 		rSize() {
 			super.rSize();
 			let s = this.s;
@@ -3859,15 +3676,12 @@
 			let iw = (gw - 4 * (this.lng - 1)) / this.lng;
 			let t = [];
 			s[2].width = gw + 'px';
-
 			for (let i = 0; i < this.lng; i++) {
 				t[i] = [14 + i * iw + i * 4, iw];
 				t[i][2] = t[i][0] + t[i][1];
 			}
-
 			this.tmp = t;
 		}
-
 	}
 
 	class Empty extends Proto {
@@ -3878,7 +3692,6 @@
 			super(o);
 			this.init();
 		}
-
 	}
 
 	class Group extends Proto {
@@ -3891,7 +3704,8 @@
 			this.current = -1;
 			this.proto = null;
 			this.isEmpty = true;
-			this.decal = o.group ? 8 : 0; //this.dd = o.group ? o.group.decal + 8 : 0
+			this.decal = o.group ? 8 : 0;
+			//this.dd = o.group ? o.group.decal + 8 : 0
 
 			this.baseH = this.h;
 			this.spaceY = new Empty({
@@ -3915,7 +3729,6 @@
 			this.setBG(o.bg);
 			if (o.open) this.open();
 		}
-
 		setBG(bg) {
 			const cc = this.colors;
 			const s = this.s;
@@ -3925,55 +3738,51 @@
 			s[0].background = 'none';
 			s[1].background = cc.groups;
 			s[2].background = cc.groups;
-
 			if (cc.gborder !== 'none') {
 				s[1].border = cc.borderSize + 'px solid ' + cc.gborder;
 			}
-
 			if (this.radius !== 0) {
 				s[1].borderRadius = this.radius + 'px';
 				s[2].borderRadius = this.radius + 'px';
 			}
+
 			/*let i = this.uis.length;
 			while(i--){
 					this.uis[i].setBG( 'none' );
 					//this.uis[i].setBG( this.colors.background );
 			}*/
-
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			let name = '';
 			if (l.y < this.baseH + this.margin) name = 'title';else {
 				if (this.isOpen) name = 'content';
-			} //console.log(name)
+			}
+
+			//console.log(name)
 
 			return name;
 		}
-
 		clearTarget() {
 			if (this.current === -1) return false;
-
 			if (this.proto.s) {
 				// if no s target is delete !!
 				this.proto.uiout();
 				this.proto.reset();
 			}
-
 			this.proto = null;
 			this.current = -1;
 			this.cursor();
 			return true;
 		}
-
 		reset() {
 			this.clearTarget();
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		handleEvent(e) {
 			let type = e.type;
@@ -3981,55 +3790,47 @@
 			let protoChange = false;
 			let name = this.testZone(e);
 			if (!name) return;
-
 			switch (name) {
 				case 'content':
 					//this.cursor()
-					//if( this.marginDiv ) e.clientY -= this.margin * 0.5
-					if (Roots.isMobile && type === 'mousedown') this.getNext(e, change);
 
+					//if( this.marginDiv ) e.clientY -= this.margin * 0.5
+
+					if (Roots.isMobile && type === 'mousedown') this.getNext(e, change);
 					if (this.proto) {
 						//e.clientY -= this.margin
 						protoChange = this.proto.handleEvent(e);
 					}
-
 					if (!Roots.lock) this.getNext(e, change);
 					break;
-
 				case 'title':
 					//this.cursor( this.isOpen ? 'n-resize':'s-resize' );
 					this.cursor('pointer');
-
 					if (type === 'mousedown') {
 						if (this.isOpen) this.close();else this.open();
 					}
-
 					break;
 			}
-
 			if (this.isDown) change = true;
 			if (protoChange) change = true;
 			return change;
 		}
-
 		getNext(e, change) {
 			let next = Roots.findTarget(this.uis, e);
-
 			if (next !== this.current) {
 				this.clearTarget();
 				this.current = next;
 			}
-
 			if (next !== -1) {
 				this.proto = this.uis[this.current];
 				this.proto.uiover();
 			}
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		add() {
 			let a = arguments;
-
 			if (typeof a[1] === 'object') {
 				a[1].isUI = this.isUI;
 				a[1].target = this.c[2];
@@ -4047,83 +3848,85 @@
 					a[2].group = this;
 				}
 			}
-
 			let u = this.ADD.apply(this, a);
-
 			if (u.isGroup) {
 				//o.add = add;
 				u.dx = 8;
-			} //u.dx += 4
+			}
+
+			//u.dx += 4
 			//console.log(this.decal)
 			//u.zone.d -= 8
+			Roots.forceZone = true;
+			//u.margin += this.margin
 
-
-			Roots.forceZone = true; //u.margin += this.margin
 			//console.log( u.margin )
 			//Roots.needReZone = true
+
 			//Roots.resize()
 			//console.log(Roots.needResize)
 
 			this.uis.push(u);
 			this.isEmpty = false;
 			return u;
-		} // remove one node
+		}
 
+		// remove one node
 
 		remove(n) {
 			if (n.dispose) n.dispose();
-		} // clear all iner 
+		}
 
+		// clear all iner 
 
 		dispose() {
 			this.clear();
 			if (this.isUI) this.main.calc();
 			super.dispose();
 		}
-
 		clear() {
 			this.empty();
 		}
-
 		empty() {
 			this.close();
 			let i = this.uis.length,
-					item;
-
+				item;
 			while (i--) {
 				item = this.uis.pop();
 				this.c[2].removeChild(item.c[0]);
-				item.clear(true); //this.uis[i].clear()
-			}
+				item.clear(true);
 
+				//this.uis[i].clear()
+			}
 			this.isEmpty = true;
 			this.h = this.baseH;
-		} // clear one element
+		}
 
+		// clear one element
 
 		clearOne(n) {
 			let id = this.uis.indexOf(n);
-
 			if (id !== -1) {
 				this.calc(-(this.uis[id].h + this.margin));
 				this.c[2].removeChild(this.uis[id].c[0]);
 				this.uis.splice(id, 1);
-
 				if (this.uis.length === 0) {
 					this.isEmpty = true;
 					this.close();
 				}
 			}
 		}
-
 		open() {
 			super.open();
 			this.setSvg(this.c[3], 'd', this.svgs.g2);
-			this.rSizeContent(); //let t = this.h - this.baseH
+			this.rSizeContent();
+
+			//let t = this.h - this.baseH
 
 			const s = this.s;
-			const cc = this.colors; //s[2].top = (this.h-1) + 'px'
+			const cc = this.colors;
 
+			//s[2].top = (this.h-1) + 'px'
 			s[2].top = this.h + this.mtop + 'px';
 			s[4].background = cc.groups; //'#0f0'
 
@@ -4135,7 +3938,6 @@
 				s[2].borderBottomLeftRadius = this.radius + 'px';
 				s[2].borderBottomRightRadius = this.radius + 'px';
 			}
-
 			if (cc.gborder !== 'none') {
 				s[4].borderLeft = cc.borderSize + 'px solid ' + cc.gborder;
 				s[4].borderRight = cc.borderSize + 'px solid ' + cc.gborder;
@@ -4143,61 +3945,56 @@
 				s[2].borderTop = 'none';
 				s[1].borderBottom = cc.borderSize + 'px solid rgba(0,0,0,0)';
 			}
+			this.parentHeight();
 
-			this.parentHeight(); //Roots.isLeave = true
+			//Roots.isLeave = true
 			//Roots.needResize = true
 		}
-
 		close() {
-			super.close(); //let t = this.h - this.baseH
+			super.close();
+
+			//let t = this.h - this.baseH
 
 			this.setSvg(this.c[3], 'd', this.svgs.g1);
 			this.h = this.baseH;
 			const s = this.s;
 			const cc = this.colors;
-			s[0].height = this.h + 'px'; //s[1].height = (this.h-2) + 'px'
+			s[0].height = this.h + 'px';
+			//s[1].height = (this.h-2) + 'px'
 			//s[2].top = this.h + 'px'
-
 			s[2].top = this.h + this.mtop + 'px';
 			s[4].background = 'none';
-
 			if (cc.gborder !== 'none') {
 				s[4].border = 'none';
 				s[2].border = 'none';
 				s[1].border = cc.borderSize + 'px solid ' + cc.gborder;
 			}
-
 			if (this.radius) s[1].borderRadius = this.radius + 'px';
 			this.parentHeight();
 		}
-
 		calcUis() {
-			if (!this.isOpen || this.isEmpty) this.h = this.baseH; //else this.h = Roots.calcUis( this.uis, this.zone, this.zone.y + this.baseH ) + this.baseH;
+			if (!this.isOpen || this.isEmpty) this.h = this.baseH;
+			//else this.h = Roots.calcUis( this.uis, this.zone, this.zone.y + this.baseH ) + this.baseH;
 			else this.h = Roots.calcUis([...this.uis, this.spaceY], this.zone, this.zone.y + this.baseH + this.margin, true) + this.baseH;
 			this.s[0].height = this.h + 'px';
 			this.s[2].height = this.h - this.baseH + 'px';
 		}
-
 		parentHeight(t) {
 			if (this.group !== null) this.group.calc(t);else if (this.isUI) this.main.calc(t);
 		}
-
 		calc(y) {
 			if (!this.isOpen) return;
 			if (this.isUI) this.main.calc();else this.calcUis();
 			this.s[0].height = this.h + 'px';
 			this.s[2].height = this.h + 'px';
 		}
-
 		rSizeContent() {
 			let i = this.uis.length;
-
 			while (i--) {
 				this.uis[i].setSize(this.w);
 				this.uis[i].rSize();
 			}
 		}
-
 		rSize() {
 			super.rSize();
 			let s = this.s;
@@ -4208,8 +4005,9 @@
 			s[1].left = this.decal + 'px';
 			s[2].left = this.decal + 'px';
 			if (this.isOpen) this.rSizeContent();
-		} //
+		}
 
+		//
 		/*
 				uiout() {
 		
@@ -4228,8 +4026,6 @@
 		
 				}
 		*/
-
-
 	}
 
 	class Joystick extends Proto {
@@ -4247,21 +4043,21 @@
 			this.tmp = new V2();
 			this.interval = null;
 			this.c[0].style.display = 'block';
-			this.haveText = o.text !== undefined ? o.text : true; //this.radius = this.w * 0.5;
-			//this.distance = this.radius*0.25;
+			this.haveText = o.text !== undefined ? o.text : true;
 
+			//this.radius = this.w * 0.5;
+			//this.distance = this.radius*0.25;
 			this.distance = this.diam * 0.5 * 0.25;
 			this.h = o.h || this.w + (this.haveText ? 10 : 0);
 			this.c[0].style.width = this.w + 'px';
-
 			if (this.c[1] !== undefined) {
 				// with title
+
 				this.c[1].style.width = '100%';
 				this.c[1].style.justifyContent = 'center';
 				this.top = 10;
 				this.h += 10;
 			}
-
 			let cc = this.colors;
 			this.c[2] = this.dom('div', this.css.txt + 'justify-content:center; top:' + (this.h - 20) + 'px; width:100%; color:' + cc.text);
 			this.c[2].textContent = this.haveText ? this.value : '';
@@ -4278,10 +4074,8 @@
 			this.init();
 			this.update(false);
 		}
-
 		mode(mode) {
 			let cc = this.colors;
-
 			switch (mode) {
 				case 0:
 					// base
@@ -4289,32 +4083,30 @@
 						this.setSvg(this.c[3], 'fill', 'url(#gradIn)', 4);
 						this.setSvg(this.c[3], 'stroke', '#000', 4);
 					} else {
-						this.setSvg(this.c[3], 'stroke', cc.joyOut, 2); //this.setSvg( this.c[3], 'stroke', 'rgb(0,0,0,0.1)', 3 );
-
+						this.setSvg(this.c[3], 'stroke', cc.joyOut, 2);
+						//this.setSvg( this.c[3], 'stroke', 'rgb(0,0,0,0.1)', 3 );
 						this.setSvg(this.c[3], 'stroke', cc.joyOut, 4);
 						this.setSvg(this.c[3], 'fill', 'none', 4);
 					}
-
 					break;
-
 				case 1:
 					// over
 					if (this.model === 0) {
 						this.setSvg(this.c[3], 'fill', 'url(#gradIn2)', 4);
 						this.setSvg(this.c[3], 'stroke', 'rgba(0,0,0,0)', 4);
 					} else {
-						this.setSvg(this.c[3], 'stroke', cc.joyOver, 2); //this.setSvg( this.c[3], 'stroke', 'rgb(0,0,0,0.3)', 3 );
-
+						this.setSvg(this.c[3], 'stroke', cc.joyOver, 2);
+						//this.setSvg( this.c[3], 'stroke', 'rgb(0,0,0,0.3)', 3 );
 						this.setSvg(this.c[3], 'stroke', cc.joySelect, 4);
 						this.setSvg(this.c[3], 'fill', cc.joyOver, 4);
 					}
-
 					break;
 			}
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		addInterval() {
 			if (this.interval !== null) this.stopInterval();
@@ -4323,57 +4115,49 @@
 				this.update();
 			}.bind(this), 10);
 		}
-
 		stopInterval() {
 			if (this.interval === null) return;
 			clearInterval(this.interval);
 			this.interval = null;
 		}
-
 		reset() {
 			this.addInterval();
 			this.mode(0);
 		}
-
 		mouseup(e) {
 			this.addInterval();
 			this.isDown = false;
 		}
-
 		mousedown(e) {
 			this.isDown = true;
 			this.mousemove(e);
 			this.mode(2);
 		}
-
 		mousemove(e) {
 			this.mode(1);
-			if (!this.isDown) return; //this.tmp.x = this.radius - ( e.clientX - this.zone.x );
+			if (!this.isDown) return;
+
+			//this.tmp.x = this.radius - ( e.clientX - this.zone.x );
 			//this.tmp.y = this.radius - ( e.clientY - this.zone.y - this.top );
 
 			this.tmp.x = this.w * 0.5 - (e.clientX - this.zone.x);
 			this.tmp.y = this.diam * 0.5 - (e.clientY - this.zone.y - this.ytop);
 			let distance = this.tmp.length();
-
 			if (distance > this.distance) {
 				let angle = Math.atan2(this.tmp.x, this.tmp.y);
 				this.tmp.x = Math.sin(angle) * this.distance;
 				this.tmp.y = Math.cos(angle) * this.distance;
 			}
-
 			this.pos.copy(this.tmp).divideScalar(this.distance).negate();
 			this.update();
 		}
-
 		setValue(v) {
 			if (v === undefined) v = [0, 0];
 			this.pos.set(v[0] || 0, v[1] || 0);
 			this.updateSVG();
 		}
-
 		update(up) {
 			if (up === undefined) up = true;
-
 			if (this.interval !== null) {
 				if (!this.isDown) {
 					this.pos.lerp(null, 0.3);
@@ -4382,18 +4166,16 @@
 					if (this.isUI && this.main.isCanvas) this.main.draw();
 				}
 			}
-
 			this.updateSVG();
 			if (up) this.send();
 			if (this.pos.isZero()) this.stopInterval();
 		}
-
 		updateSVG() {
 			//let x = this.radius - ( -this.pos.x * this.distance );
 			//let y = this.radius - ( -this.pos.y * this.distance );
+
 			let x = this.diam * 0.5 - -this.pos.x * this.distance;
 			let y = this.diam * 0.5 - -this.pos.y * this.distance;
-
 			if (this.model === 0) {
 				let sx = x + this.pos.x * 5 + 5;
 				let sy = y + this.pos.y * 5 + 10;
@@ -4403,19 +4185,16 @@
 				this.setSvg(this.c[3], 'cx', x * this.ratio, 3);
 				this.setSvg(this.c[3], 'cy', y * this.ratio, 3);
 			}
-
 			this.setSvg(this.c[3], 'cx', x * this.ratio, 4);
 			this.setSvg(this.c[3], 'cy', y * this.ratio, 4);
 			this.value[0] = (this.pos.x * this.multiplicator).toFixed(this.precision) * 1;
 			this.value[1] = (this.pos.y * this.multiplicator).toFixed(this.precision) * 1;
 			if (this.haveText) this.c[2].textContent = this.value;
 		}
-
 		clear() {
 			this.stopInterval();
 			super.clear();
 		}
-
 	}
 
 	class Knob extends Proto {
@@ -4435,14 +4214,12 @@
 			this.h = o.h || this.w + 10;
 			this.c[0].style.width = this.w + 'px';
 			this.c[0].style.display = 'block';
-
 			if (this.c[1] !== undefined) {
 				this.c[1].style.width = '100%';
 				this.c[1].style.justifyContent = 'center';
 				this.top = 10;
 				this.h += 10;
 			}
-
 			this.percent = 0;
 			this.cmode = 0;
 			let cc = this.colors;
@@ -4459,7 +4236,6 @@
 				left: 0,
 				top: this.top
 			});
-
 			if (this.model > 0) {
 				Tools.dom('path', '', {
 					d: '',
@@ -4474,53 +4250,47 @@
 					this.setSvg(this.c[3], 'style', 'filter: url("#UILGlow");', 4);
 				}
 			}
-
 			this.r = 0;
 			this.init();
 			this.update();
 		}
-
 		mode(mode) {
 			let cc = this.colors;
 			if (this.cmode === mode) return false;
-
 			switch (mode) {
 				case 0:
 					// base
 					this.s[2].color = cc.text;
-					this.setSvg(this.c[3], 'fill', cc.button, 0); //this.setSvg( this.c[3], 'stroke','rgba(255,0,0,0.2)', 2);
-
+					this.setSvg(this.c[3], 'fill', cc.button, 0);
+					//this.setSvg( this.c[3], 'stroke','rgba(255,0,0,0.2)', 2);
 					this.setSvg(this.c[3], 'stroke', cc.text, 1);
 					break;
-
 				case 1:
 					// down
 					this.s[2].color = cc.textOver;
-					this.setSvg(this.c[3], 'fill', cc.select, 0); //this.setSvg( this.c[3], 'stroke','rgba(0,0,0,0.6)', 2);
-
+					this.setSvg(this.c[3], 'fill', cc.select, 0);
+					//this.setSvg( this.c[3], 'stroke','rgba(0,0,0,0.6)', 2);
 					this.setSvg(this.c[3], 'stroke', cc.textOver, 1);
 					break;
 			}
-
 			this.cmode = mode;
 			return true;
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			if (l.y <= this.c[1].offsetHeight) return 'title';else if (l.y > this.h - this.c[2].offsetHeight) return 'text';else return 'knob';
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mouseup(e) {
 			this.isDown = false;
 			this.sendEnd();
 			return this.mode(0);
 		}
-
 		mousedown(e) {
 			this.isDown = true;
 			this.old = this.value;
@@ -4528,10 +4298,11 @@
 			this.mousemove(e);
 			return this.mode(1);
 		}
-
 		mousemove(e) {
 			if (!this.isDown) return;
-			let off = this.offset; //off.x = this.radius - ( e.clientX - this.zone.x );
+			let off = this.offset;
+
+			//off.x = this.radius - ( e.clientX - this.zone.x );
 			//off.y = this.radius - ( e.clientY - this.zone.y - this.top );
 
 			off.x = this.w * 0.5 - (e.clientX - this.zone.x);
@@ -4543,7 +4314,6 @@
 			let steps = 1 / this.cirRange;
 			let value = (this.r + this.mPI) * steps;
 			let n = this.range * value + this.min - this.old;
-
 			if (n >= this.step || n <= this.step) {
 				n = Math.floor(n / this.step);
 				this.value = this.numValue(this.old + n * this.step);
@@ -4552,40 +4322,35 @@
 				this.oldr = this.r;
 			}
 		}
-
 		wheel(e) {
 			let name = this.testZone(e);
-
 			if (name === 'knob') {
 				let v = this.value - this.step * e.delta;
-
 				if (v > this.max) {
 					v = this.isCyclic ? this.min : this.max;
 				} else if (v < this.min) {
 					v = this.isCyclic ? this.max : this.min;
 				}
-
 				this.setValue(v);
 				this.old = v;
 				this.update(true);
 				return true;
 			}
-
 			return false;
 		}
-
 		makeGrad() {
 			let d = '',
-					step,
-					range,
-					a,
-					x,
-					y,
-					x2,
-					y2,
-					r = 64;
+				step,
+				range,
+				a,
+				x,
+				y,
+				x2,
+				y2,
+				r = 64;
 			let startangle = Math.PI + this.mPI;
-			let endangle = Math.PI - this.mPI; //let step = this.step>5 ? this.step : 1;
+			let endangle = Math.PI - this.mPI;
+			//let step = this.step>5 ? this.step : 1;
 
 			if (this.step > 5) {
 				range = this.range / this.step;
@@ -4594,7 +4359,6 @@
 				step = (startangle - endangle) / r * 2;
 				range = r * 0.5;
 			}
-
 			for (let i = 0; i <= range; ++i) {
 				a = startangle - step * i;
 				x = r + Math.sin(a) * (r - 20);
@@ -4603,10 +4367,8 @@
 				y2 = r + Math.cos(a) * (r - 24);
 				d += 'M' + x + ' ' + y + ' L' + x2 + ' ' + y2 + ' ';
 			}
-
 			return d;
 		}
-
 		update(up) {
 			this.c[2].textContent = this.value;
 			this.percent = (this.value - this.min) / this.range;
@@ -4619,7 +4381,6 @@
 			let x2 = 20 * sin + 64;
 			let y2 = -(20 * cos) + 64;
 			this.setSvg(this.c[3], 'd', 'M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y2, 1);
-
 			if (this.model > 0) {
 				let x1 = 36 * Math.sin(sa) + 64;
 				let y1 = 36 * Math.cos(sa) + 64;
@@ -4630,18 +4391,18 @@
 				let color = Tools.pack(Tools.lerpColor(Tools.unpack(Tools.ColorLuma(this.colors.text, -0.75)), Tools.unpack(this.colors.text), this.percent));
 				this.setSvg(this.c[3], 'stroke', color, 4);
 			}
-
 			if (up) this.send();
 		}
-
 	}
 
 	class List extends Proto {
 		constructor(o = {}) {
-			super(o); // TODO not work
+			super(o);
 
-			this.hideCurrent = false; // images
+			// TODO not work
+			this.hideCurrent = false;
 
+			// images
 			this.path = o.path || '';
 			this.format = o.format || '';
 			this.isWithImage = this.path !== '' ? true : false;
@@ -4649,8 +4410,9 @@
 			this.tmpImage = {};
 			this.tmpUrl = [];
 			this.m = o.m !== undefined ? o.m : 5;
-			let align = o.align || 'left'; // scroll size
+			let align = o.align || 'left';
 
+			// scroll size
 			let ss = o.scrollSize || 10;
 			this.ss = ss + 1;
 			this.sMode = 0;
@@ -4675,34 +4437,31 @@
 			this.c[3].style.color = cc.text;
 			this.list = [];
 			this.refObject = null;
-
 			if (o.list) {
 				if (o.list instanceof Array) {
 					this.list = o.list;
 				} else if (o.list instanceof Object) {
 					this.refObject = o.list;
-
 					for (let g in this.refObject) this.list.push(g);
 				}
 			}
-
 			this.items = [];
 			this.prevName = '';
 			this.tmpId = 0;
 			this.baseH = this.h;
 			this.itemHeight = o.itemHeight || this.h; //(this.h-3);
-			// force full list 
 
+			// force full list 
 			this.full = o.full || false;
 			this.py = 0;
 			this.ww = this.sb;
 			this.scroll = false;
 			this.isDown = false;
-			this.current = null; // list up or down
+			this.current = null;
 
+			// list up or down
 			this.side = o.side || 'down';
 			this.up = this.side === 'down' ? 0 : 1;
-
 			if (this.up) {
 				this.c[2].style.top = 'auto';
 				this.c[3].style.top = 'auto';
@@ -4713,22 +4472,18 @@
 			} else {
 				this.c[2].style.top = this.baseH + 'px';
 			}
-
 			this.listIn = this.dom('div', this.css.basic + 'left:0; top:0; width:100%; background:none;');
 			this.listIn.name = 'list';
 			this.topList = 0;
 			this.c[2].appendChild(this.listIn);
 			this.c[2].appendChild(this.scrollerBack);
 			this.c[2].appendChild(this.scroller);
-
 			if (o.value !== undefined) {
 				if (!isNaN(o.value)) this.value = this.list[o.value];else this.value = o.value;
 			} else {
 				this.value = this.list[0];
 			}
-
 			this.isOpenOnStart = o.open || false;
-
 			if (this.listOnly) {
 				this.baseH = 5;
 				this.c[3].style.display = 'none';
@@ -4736,15 +4491,17 @@
 				this.c[2].style.top = this.baseH + 'px';
 				this.isOpenOnStart = true;
 			}
-
 			this.miniCanvas = o.miniCanvas || false;
 			this.canvasBg = o.canvasBg || 'rgba(0,0,0,0)';
-			this.imageSize = o.imageSize || [20, 20]; // dragout function
+			this.imageSize = o.imageSize || [20, 20];
 
+			// dragout function
 			this.drag = o.drag || false;
 			this.dragout = o.dragout || false;
 			this.dragstart = o.dragstart || null;
-			this.dragend = o.dragend || null; //this.c[0].style.background = '#FF0000'
+			this.dragend = o.dragend || null;
+
+			//this.c[0].style.background = '#FF0000'
 			///if( this.isWithImage ) this.preloadImage();
 
 			this.setList(this.list);
@@ -4752,22 +4509,19 @@
 			if (this.isWithImage) this.preloadImage();
 			if (this.isOpenOnStart) this.open(true);
 			this.baseH += this.mtop;
-		} // image list
+		}
 
+		// image list
 
 		preloadImage() {
 			this.preLoadComplete = false;
 			this.tmpImage = {};
-
 			for (let i = 0; i < this.list.length; i++) this.tmpUrl.push(this.list[i]);
-
 			this.loadOne();
 		}
-
 		nextImg() {
 			if (this.c === null) return;
 			this.tmpUrl.shift();
-
 			if (this.tmpUrl.length === 0) {
 				this.preLoadComplete = true;
 				this.addImages();
@@ -4776,7 +4530,6 @@
 				if( this.isOpenOnStart ) this.open();*/
 			} else this.loadOne();
 		}
-
 		loadOne() {
 			let self = this;
 			let name = this.tmpUrl[0];
@@ -4789,13 +4542,13 @@
 				self.tmpImage[name] = img;
 				self.nextImg();
 			});
-		} //
+		}
 
+		//
 
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
-
 			if (this.up && this.isOpen) {
 				if (l.y > this.h - this.baseH) return 'title';else {
 					if (this.scroll && l.x > this.sa + this.sb - this.ss) return 'scroll';
@@ -4809,28 +4562,25 @@
 					}
 				}
 			}
-
 			return '';
 		}
-
 		testItems(y) {
 			let name = '';
 			let items = this.items;
+
 			/*if(this.hideCurrent){
 					//items = [...this.items]
 					items = this.items.slice(this.tmpId)
 				}*/
 
 			let i = items.length,
-					item,
-					a,
-					b;
-
+				item,
+				a,
+				b;
 			while (i--) {
 				item = items[i];
 				a = item.posy + this.topList;
 				b = item.posy + this.itemHeight + 1 + this.topList;
-
 				if (y >= a && y <= b) {
 					name = 'item' + i;
 					this.modeItem(0);
@@ -4839,28 +4589,23 @@
 					return name;
 				}
 			}
-
 			return name;
 		}
-
 		modeItem(mode) {
 			if (!this.current) return;
 			if (this.current.select && mode === 0) mode = 2;
 			let cc = this.colors;
-
 			switch (mode) {
 				case 0:
 					// base
 					this.current.style.background = cc.back;
 					this.current.style.color = cc.text;
 					break;
-
 				case 1:
 					// over
 					this.current.style.background = cc.over;
 					this.current.style.color = cc.textOver;
 					break;
-
 				case 2:
 					// edit / down
 					this.current.style.background = cc.select;
@@ -4868,41 +4613,35 @@
 					break;
 			}
 		}
-
 		unSelected() {
 			if (!this.current) return;
 			this.modeItem(0);
 			this.current = null;
 		}
-
 		selected() {
 			if (!this.current) return;
 			this.resetItems();
 			this.modeItem(2);
 			this.current.select = true;
 		}
-
 		resetItems() {
 			let i = this.items.length;
-
 			while (i--) {
 				this.items[i].select = false;
 				this.items[i].style.background = this.colors.back;
 				this.items[i].style.color = this.colors.text;
 			}
 		}
-
 		hideActive() {
-			if (!this.hideCurrent) return; //if( !this.current ) return
-
+			if (!this.hideCurrent) return;
+			//if( !this.current ) return
 			if (this.current) this.tmpId = this.current.id;
-			this.resetHide(); //this.items[this.tmpId].style.height = 0+'px'
+			this.resetHide();
+			//this.items[this.tmpId].style.height = 0+'px'
 		}
-
 		resetHide() {
 			console.log(this.tmpId);
 			let i = this.items.length;
-
 			while (i--) {
 				if (i === this.tmpId) {
 					this.items[i].style.height = 0 + 'px';
@@ -4910,32 +4649,30 @@
 				} else {
 					this.items[i].style.height = this.itemHeight + 'px';
 					this.items[i].posy = (this.itemHeight + 1) * (i - 1);
-				} //this.items[i].style.display = 'flex'
+				}
+				//this.items[i].style.display = 'flex'
 
 				/*this.items[i].select = false
 				this.items[i].style.background = this.colors.back;
 				this.items[i].style.color = this.colors.text;*/
-
 			}
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mouseup(e) {
 			this.isDown = false;
 		}
-
 		mousedown(e) {
 			let name = this.testZone(e);
 			if (!name) return false;
-
 			if (name === 'scroll') {
 				this.isDown = true;
 				this.mousemove(e);
 			} else if (name === 'title') {
 				this.modeTitle(2);
-
 				if (!this.listOnly) {
 					this.hideActive();
 					if (!this.isOpen) this.open();else this.close();
@@ -4943,27 +4680,26 @@
 			} else {
 				// is item
 				if (this.current) {
-					this.value = this.list[this.current.id]; //this.tmpId = this.current.id
+					this.value = this.list[this.current.id];
+					//this.tmpId = this.current.id
 
-					if (this.isSelectable) this.selected(); //this.send( this.refObject !== null ? this.refObject[ this.list[this.current.id]] : this.value );
+					if (this.isSelectable) this.selected();
 
+					//this.send( this.refObject !== null ? this.refObject[ this.list[this.current.id]] : this.value );
 					this.send(this.value);
-
 					if (!this.listOnly) {
 						this.close();
-						this.setTopItem(); //this.hideActive()
+						this.setTopItem();
+						//this.hideActive()
 					}
 				}
 			}
-
 			return true;
 		}
-
 		mousemove(e) {
 			let nup = false;
 			let name = this.testZone(e);
 			if (!name) return nup;
-
 			if (name === 'title') {
 				this.unSelected();
 				this.modeTitle(1);
@@ -4971,101 +4707,88 @@
 			} else if (name === 'scroll') {
 				this.cursor('s-resize');
 				this.modeScroll(1);
-
 				if (this.isDown) {
-					this.modeScroll(2); //this.update( ( e.clientY - top	) - ( this.sh*0.5 ) );
-
+					this.modeScroll(2);
+					//this.update( ( e.clientY - top	) - ( this.sh*0.5 ) );
 					let top = this.zone.y + this.baseH - 2;
 					this.update(e.clientY - top - this.sh * 0.5);
-				} //if(this.isDown) this.listmove(e);
-
+				}
+				//if(this.isDown) this.listmove(e);
 			} else {
 				// is item
 				this.modeTitle(0);
 				this.modeScroll(0);
 				this.cursor('pointer');
 			}
-
 			if (name !== this.prevName) nup = true;
 			this.prevName = name;
 			return nup;
 		}
-
 		wheel(e) {
 			let name = this.testZone(e);
 			if (name === 'title') return false;
 			this.py += e.delta * 10;
 			this.update(this.py);
 			return true;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		reset() {
 			this.prevName = '';
 			this.unSelected();
 			this.modeTitle(0);
-			this.modeScroll(0); //console.log('this is reset')
-		}
+			this.modeScroll(0);
 
+			//console.log('this is reset')
+		}
 		modeScroll(mode) {
 			if (mode === this.sMode) return;
 			let s = this.scroller.style;
 			let cc = this.colors;
-
 			switch (mode) {
 				case 0:
 					// base
 					s.background = cc.text;
 					break;
-
 				case 1:
 					// over
 					s.background = cc.select;
 					break;
-
 				case 2:
 					// edit / down
 					s.background = cc.select;
 					break;
 			}
-
 			this.sMode = mode;
 		}
-
 		modeTitle(mode) {
 			if (mode === this.tMode) return;
 			let s = this.s;
 			let cc = this.colors;
-
 			switch (mode) {
 				case 0:
 					// base
 					s[3].color = cc.text;
 					s[3].background = cc.button;
 					break;
-
 				case 1:
 					// over
 					s[3].color = cc.textOver;
 					s[3].background = cc.overoff;
 					break;
-
 				case 2:
 					// edit / down
 					s[3].color = cc.textSelect;
 					s[3].background = cc.overoff;
 					break;
 			}
-
 			this.tMode = mode;
 		}
-
 		clearList() {
 			while (this.listIn.children.length) this.listIn.removeChild(this.listIn.lastChild);
-
 			this.items = [];
 		}
-
 		setList(list) {
 			this.clearList();
 			this.list = list;
@@ -5081,12 +4804,10 @@
 			this.c[2].style.height = this.maxHeight + 'px';
 			this.scrollerBack.style.height = this.maxHeight + 'px';
 			this.scroller.style.height = this.sh + 'px';
-
 			if (this.max > this.maxHeight) {
 				this.ww = this.sb - this.ss;
 				this.scroll = true;
 			}
-
 			if (this.miniCanvas) {
 				this.tmpCanvas = document.createElement('canvas');
 				this.tmpCanvas.width = this.imageSize[0];
@@ -5095,9 +4816,7 @@
 				this.tmpCtx.fillStyle = this.canvasBg;
 				this.tmpCtx.fillRect(0, 0, this.imageSize[0], this.imageSize[1]);
 			}
-
 			let item, n; //, l = this.sb;
-
 			for (let i = 0; i < this.length; i++) {
 				n = this.list[i];
 				item = this.dom('div', this.css.item + 'padding:0px ' + (this.m + 1) + 'px; width:' + this.ww + 'px; height:' + this.itemHeight + 'px; line-height:' + (this.itemHeight - 2) + 'px; color:' + this.colors.text + '; background:' + this.colors.back + ';');
@@ -5107,13 +4826,15 @@
 				item.posy = (this.itemHeight + 1) * i;
 				this.listIn.appendChild(item);
 				this.items.push(item);
-				if (n === this.value) this.current = item; //if( this.isWithImage ) item.appendChild( this.tmpImage[n] );
+				if (n === this.value) this.current = item;
 
+				//if( this.isWithImage ) item.appendChild( this.tmpImage[n] );
 				if (!this.isWithImage) item.textContent = n;
-
 				if (this.miniCanvas) {
 					let c = new Image();
-					c.src = this.tmpCanvas.toDataURL(); //item.style.marginLeft = (this.imageSize[0]+8)+'px'
+					c.src = this.tmpCanvas.toDataURL();
+
+					//item.style.marginLeft = (this.imageSize[0]+8)+'px'
 
 					/*let c = document.createElement('canvas')
 						c.width = this.imageSize[0]
@@ -5121,72 +4842,62 @@
 					let ctx = c.getContext("2d")
 					ctx.fillStyle = this.canvasBg
 					ctx.fillRect(0, 0, this.imageSize[0], this.imageSize[1])*/
+
 					//c.style.cssText = 'position:relative; pointer-events:none; display:inline-block; float:left; margin-left:0px; margin-right:5px; top:2px'
 					// c.style.cssText =' flex-shrink: 0;'
 
-					c.style.cssText = 'margin-right:4px;'; //c.style.cssText = 'display:flex; align-content: flex-start; flex-wrap: wrap;'
-					//item.style.float = 'right'
+					c.style.cssText = 'margin-right:4px;';
 
+					//c.style.cssText = 'display:flex; align-content: flex-start; flex-wrap: wrap;'
+					//item.style.float = 'right'
 					item.appendChild(c);
 					this.tmpImage[n] = c;
 				}
-
 				if (this.dragout) {
 					item.img = this.tmpImage[n];
 					item.style.pointerEvents = 'auto';
 					item.draggable = "true";
-					item.addEventListener('dragstart', this.dragstart || function () {
-						/*console.log('drag start')*/
-					});
-					item.addEventListener('drag', this.drag || function () {
-						/*console.log('drag start')*/
-					}); //item.addEventListener('dragover', this);
+					item.addEventListener('dragstart', this.dragstart || function () {/*console.log('drag start')*/});
+					item.addEventListener('drag', this.drag || function () {/*console.log('drag start')*/});
+					//item.addEventListener('dragover', this);
 					//item.addEventListener('dragenter', this);
-
 					item.addEventListener('dragleave', function () {
 						Roots.fakeUp();
 					});
-					item.addEventListener('dragend', this.dragend || function () {
-						/*console.log('drag end')*/
-					}.bind(this)); //item.addEventListener('drop', function(){console.log('drop')})
+					item.addEventListener('dragend', this.dragend || function () {/*console.log('drag end')*/}.bind(this));
+					//item.addEventListener('drop', function(){console.log('drop')})
 				}
 			}
-
 			this.setTopItem();
 			if (this.isSelectable) this.selected();
 		}
-
 		drawImage(name, image, x, y, w, h) {
 			this.tmpCtx.clearRect(0, 0, this.imageSize[0], this.imageSize[1]);
 			this.tmpCtx.drawImage(image, x, y, w, h, 0, 0, this.imageSize[0], this.imageSize[1]);
 			this.tmpImage[name].src = this.tmpCanvas.toDataURL();
+
 			/*let c = this.tmpImage[name]
 			let ctx = c.getContext("2d")
 			ctx.drawImage(image, x, y, w, h, 0, 0, this.imageSize[0], this.imageSize[1])*/
 		}
-
 		addImages() {
 			let lng = this.list.length;
-
 			for (let i = 0; i < lng; i++) {
 				this.items[i].appendChild(this.tmpImage[this.list[i]]);
 			}
-
 			this.setTopItem();
 		}
-
 		setValue(value) {
-			if (!isNaN(value)) this.value = this.list[value];else this.value = value; //this.tmpId = value
+			if (!isNaN(value)) this.value = this.list[value];else this.value = value;
+
+			//this.tmpId = value
 
 			this.setTopItem();
 		}
-
 		setTopItem() {
 			if (this.staticTop) return;
-
 			if (this.isWithImage) {
 				if (!this.preLoadComplete) return;
-
 				if (!this.c[3].children.length) {
 					this.canvas = document.createElement('canvas');
 					this.canvas.width = this.imageSize[0];
@@ -5197,11 +4908,9 @@
 					this.c[3].style.justifyContent = 'left';
 					this.c[3].appendChild(this.canvas);
 				}
-
 				this.tmpImage[this.value];
 				this.ctx.drawImage(this.tmpImage[this.value], 0, 0, this.imageSize[2], this.imageSize[3], 0, 0, this.imageSize[0], this.imageSize[1]);
 			} else this.c[3].textContent = this.value;
-
 			if (this.miniCanvas) {
 				if (!this.c[3].children.length) {
 					this.canvas = document.createElement('canvas');
@@ -5213,11 +4922,11 @@
 					this.c[3].style.justifyContent = 'left';
 					this.c[3].appendChild(this.canvas);
 				}
-
 				this.ctx.drawImage(this.tmpImage[this.value], 0, 0);
 			}
-		} // ----- LIST
+		}
 
+		// ----- LIST
 
 		update(y) {
 			if (!this.scroll) return;
@@ -5228,16 +4937,13 @@
 			this.scroller.style.top = Math.floor(y) + 'px';
 			this.py = y;
 		}
-
 		parentHeight(t) {
 			if (this.group !== null) this.group.calc(t);else if (this.isUI) this.main.calc(t);
 		}
-
 		open(first) {
 			super.open();
 			this.update(0);
 			this.h = this.maxHeight + this.baseH + 5;
-
 			if (!this.scroll) {
 				this.topList = 0;
 				this.h = this.baseH + 5 + this.max;
@@ -5247,23 +4953,19 @@
 				this.scroller.style.display = 'block';
 				this.scrollerBack.style.display = 'block';
 			}
-
 			this.s[0].height = this.h + 'px';
 			this.s[2].display = 'block';
-
 			if (this.up) {
 				this.zone.y -= this.h - (this.baseH - 10);
 				this.setSvg(this.c[4], 'd', this.svgs.g1);
 			} else {
 				this.setSvg(this.c[4], 'd', this.svgs.g2);
 			}
-
 			this.rSizeContent();
 			let t = this.h - this.baseH;
 			this.zone.h = this.h;
 			if (!first) this.parentHeight(t);
 		}
-
 		close() {
 			super.close();
 			if (this.up) this.zone.y += this.h - (this.baseH - 10);
@@ -5274,21 +4976,21 @@
 			this.setSvg(this.c[4], 'd', this.svgs.g1);
 			this.zone.h = this.h;
 			this.parentHeight(-t);
-		} // -----
+		}
 
+		// -----
 
 		text(txt) {
 			this.c[3].textContent = txt;
 		}
-
 		rSizeContent() {
 			let i = this.length;
-
 			while (i--) this.listIn.children[i].style.width = this.ww + 'px';
 		}
-
 		rSize() {
-			super.rSize(); //Proto.prototype.rSize.call( this );
+			super.rSize();
+
+			//Proto.prototype.rSize.call( this );
 
 			let s = this.s;
 			let w = this.sb;
@@ -5303,7 +5005,6 @@
 			if (this.max > this.maxHeight) this.ww = w - this.ss;
 			if (this.isOpen) this.rSizeContent();
 		}
-
 	}
 
 	class Numeric extends Proto {
@@ -5318,15 +5019,12 @@
 			this.isSingle = true;
 			this.isAngle = false;
 			this.isVector = false;
-
 			if (o.isAngle) {
 				this.isAngle = true;
 				this.multy = Tools.torad;
 				this.invmulty = Tools.todeg;
 			}
-
 			this.isDrag = o.drag || false;
-
 			if (o.value !== undefined) {
 				if (!isNaN(o.value)) {
 					this.value = [o.value];
@@ -5343,7 +5041,6 @@
 					this.isVector = true;
 				}
 			}
-
 			this.lng = this.value.length;
 			this.tmp = [];
 			this.current = -1;
@@ -5353,12 +5050,12 @@
 				d: 0,
 				v: 0
 			};
-			let cc = this.colors; // bg
+			let cc = this.colors;
 
+			// bg
 			this.c[2] = this.dom('div', this.css.basic + ' background:' + cc.select + '; top:4px; width:0px; height:' + (this.h - 8) + 'px;');
 			this.cMode = [];
 			let i = this.lng;
-
 			while (i--) {
 				if (this.isAngle) this.value[i] = (this.value[i] * 180 / Math.PI).toFixed(this.precision);
 				this.c[3 + i] = this.dom('div', this.css.txtselect + 'top:1px; height:' + (this.h - 2) + 'px; color:' + cc.text + '; background:' + cc.back + '; borderColor:' + cc.border + '; border-radius:' + this.radius + 'px;');
@@ -5367,39 +5064,36 @@
 				this.c[3 + i].style.color = this.colors.text;
 				this.c[3 + i].isNum = true;
 				this.cMode[i] = 0;
-			} // selection
+			}
 
-
+			// selection
 			this.selectId = 3 + this.lng;
-			this.c[this.selectId] = this.dom('div', this.css.txtselect + 'position:absolute; top:2px; height:' + (this.h - 4) + 'px; padding:0px 0px; width:0px; color:' + cc.textSelect + '; background:' + cc.select + '; border:none; border-radius:0px;'); // cursor
+			this.c[this.selectId] = this.dom('div', this.css.txtselect + 'position:absolute; top:2px; height:' + (this.h - 4) + 'px; padding:0px 0px; width:0px; color:' + cc.textSelect + '; background:' + cc.select + '; border:none; border-radius:0px;');
 
+			// cursor
 			this.cursorId = 4 + this.lng;
 			this.c[this.cursorId] = this.dom('div', this.css.basic + 'top:2px; height:' + (this.h - 4) + 'px; width:0px; background:' + cc.text + ';');
 			this.init();
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			let i = this.lng;
 			let t = this.tmp;
-
 			while (i--) {
 				if (l.x > t[i][0] && l.x < t[i][2]) return i;
 			}
-
 			return '';
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
 
-
 		mousedown(e) {
 			let name = this.testZone(e);
-
 			if (!this.isDown) {
 				this.isDown = true;
-
 				if (name !== '') {
 					this.current = name;
 					this.prev = {
@@ -5410,13 +5104,10 @@
 					};
 					this.setInput(this.c[3 + this.current]);
 				}
-
 				return this.mousemove(e);
 			}
-
 			return false;
 		}
-
 		mouseup(e) {
 			if (this.isDown) {
 				this.isDown = false;
@@ -5428,10 +5119,8 @@
 				};
 				return this.mousemove(e);
 			}
-
 			return false;
 		}
-
 		mousemove(e) {
 			let nup = false;
 			let x = 0;
@@ -5439,7 +5128,6 @@
 			if (name === '') this.cursor();else {
 				if (!this.isDrag) this.cursor('text');else this.cursor(this.current !== -1 ? 'move' : 'pointer');
 			}
-
 			if (this.isDrag) {
 				if (this.current !== -1) {
 					this.prev.d += e.clientX - this.prev.x - (e.clientY - this.prev.y);
@@ -5456,16 +5144,15 @@
 				if (this.current !== -1) x -= this.tmp[this.current][0];
 				return this.upInput(x, this.isDown);
 			}
-
 			return nup;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		reset() {
 			let nup = false;
 			return nup;
 		}
-
 		setValue(v) {
 			if (this.isVector) {
 				if (v.x !== undefined) this.value[0] = v.x;
@@ -5475,31 +5162,23 @@
 			} else {
 				this.value = this.isSingle ? [v] : v;
 			}
-
 			this.update();
 		}
-
 		sameStr(str) {
 			let i = this.value.length;
-
 			while (i--) this.c[3 + i].textContent = str;
 		}
-
 		update(up) {
 			let i = this.value.length;
-
 			while (i--) {
 				this.value[i] = this.numValue(this.value[i] * this.invmulty);
 				this.c[3 + i].textContent = this.value[i];
 			}
-
 			if (up) this.send();
 		}
-
 		send(v) {
 			v = v || this.value;
 			this.isSend = true;
-
 			if (this.objectLink !== null) {
 				if (this.isVector) {
 					this.objectLink[this.objectKey].fromArray(v);
@@ -5507,13 +5186,13 @@
 					this.objectLink[this.objectKey] = v;
 				}
 			}
-
 			if (this.callback) this.callback(v, this.objectKey);
 			this.isSend = false;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 INPUT
 		// ----------------------
-
 
 		select(c, e, w, t) {
 			let s = this.s;
@@ -5524,7 +5203,6 @@
 			s[this.selectId].width = w + 'px';
 			this.c[this.selectId].innerHTML = t;
 		}
-
 		unselect() {
 			let s = this.s;
 			if (!s) return;
@@ -5532,12 +5210,10 @@
 			s[this.selectId].width = 0 + 'px';
 			s[this.cursorId].width = 0 + 'px';
 		}
-
 		validate(force) {
 			let ar = [];
 			let i = this.lng;
 			if (this.allway) force = true;
-
 			while (i--) {
 				if (!isNaN(this.c[3 + i].textContent)) {
 					let nx = this.numValue(this.c[3 + i].textContent);
@@ -5547,26 +5223,23 @@
 					// not number
 					this.c[3 + i].textContent = this.value[i];
 				}
-
 				ar[i] = this.value[i] * this.multy;
 			}
-
 			if (!force) return;
 			this.send(this.isSingle ? ar[0] : ar);
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 REZISE
 		// ----------------------
-
 
 		rSize() {
 			super.rSize();
 			let sx = this.colors.sx;
 			let ss = sx * (this.lng - 1);
 			let w = (this.sb - ss) / this.lng; //(( this.sb + sx ) / this.lng )-sx
-
 			let s = this.s;
 			let i = this.lng;
-
 			while (i--) {
 				//this.tmp[i] = [ Math.floor( this.sa + ( w * i )+( 5 * i )), w ];
 				this.tmp[i] = [this.sa + w * i + sx * i, w];
@@ -5575,7 +5248,6 @@
 				s[3 + i].width = this.tmp[i][1] + 'px';
 			}
 		}
-
 	}
 
 	class Slide extends Proto {
@@ -5583,7 +5255,9 @@
 			super(o);
 			this.setTypeNumber(o);
 			this.model = o.stype || 0;
-			if (o.mode !== undefined) this.model = o.mode; //this.defaultBorderColor = this.colors.hide;
+			if (o.mode !== undefined) this.model = o.mode;
+
+			//this.defaultBorderColor = this.colors.hide;
 
 			this.isDown = false;
 			this.isOver = false;
@@ -5591,27 +5265,26 @@
 			this.isDeg = o.isDeg || false;
 			this.isCyclic = o.cyclic || false;
 			this.firstImput = false;
-			let cc = this.colors; //this.c[2] = this.dom( 'div', this.css.txtselect + 'letter-spacing:-1px; text-align:right; width:47px; border:1px dashed '+this.defaultBorderColor+'; color:'+ this.colors.text );
+			let cc = this.colors;
+
+			//this.c[2] = this.dom( 'div', this.css.txtselect + 'letter-spacing:-1px; text-align:right; width:47px; border:1px dashed '+this.defaultBorderColor+'; color:'+ this.colors.text );
 			//this.c[2] = this.dom( 'div', this.css.txtselect + 'text-align:right; width:47px; border:1px dashed '+this.defaultBorderColor+'; color:'+ this.colors.text );
-
-			this.c[2] = this.dom('div', this.css.txtselect + 'border:none; background:none; width:47px; color:' + cc.text + ';'); //this.c[2] = this.dom( 'div', this.css.txtselect + 'letter-spacing:-1px; text-align:right; width:47px; color:'+ this.colors.text );
-
+			this.c[2] = this.dom('div', this.css.txtselect + 'border:none; background:none; width:47px; color:' + cc.text + ';');
+			//this.c[2] = this.dom( 'div', this.css.txtselect + 'letter-spacing:-1px; text-align:right; width:47px; color:'+ this.colors.text );
 			this.c[3] = this.dom('div', this.css.basic + ' top:0; height:' + this.h + 'px;');
 			this.c[4] = this.dom('div', this.css.basic + 'background:' + cc.back + '; top:2px; height:' + (this.h - 4) + 'px;');
 			this.c[5] = this.dom('div', this.css.basic + 'left:4px; top:5px; height:' + (this.h - 10) + 'px; background:' + cc.text + ';');
-			this.c[2].isNum = true; //this.c[2].style.height = (this.h-4) + 'px';
+			this.c[2].isNum = true;
+			//this.c[2].style.height = (this.h-4) + 'px';
 			//this.c[2].style.lineHeight = (this.h-8) + 'px';
-
 			this.c[2].style.height = this.h - 2 + 'px';
 			this.c[2].style.lineHeight = this.h - 10 + 'px';
-
 			if (this.model !== 0) {
 				let r1 = 4,
-						h1 = 4,
-						h2 = 8,
-						ww = this.h - 6,
-						ra = 16;
-
+					h1 = 4,
+					h2 = 8,
+					ww = this.h - 6,
+					ra = 16;
 				if (this.model === 2) {
 					r1 = 0;
 					h1 = 2;
@@ -5619,121 +5292,106 @@
 					ra = 2;
 					ww = (this.h - 6) * 0.5;
 				}
-
 				if (this.model === 3) this.c[5].style.visible = 'none';
 				this.c[4].style.borderRadius = r1 + 'px';
 				this.c[4].style.height = h2 + 'px';
 				this.c[4].style.top = this.h * 0.5 - h1 + 'px';
 				this.c[5].style.borderRadius = r1 * 0.5 + 'px';
 				this.c[5].style.height = h1 + 'px';
-				this.c[5].style.top = this.h * 0.5 - h1 * 0.5 + 'px'; //this.c[6] = this.dom( 'div', this.css.basic + 'border-radius:'+ra+'px; margin-left:'+(-ww*0.5)+'px; border:1px solid '+cc.border+'; background:'+cc.button+'; left:4px; top:2px; height:'+(this.h-4)+'px; width:'+ww+'px;' );
+				this.c[5].style.top = this.h * 0.5 - h1 * 0.5 + 'px';
 
+				//this.c[6] = this.dom( 'div', this.css.basic + 'border-radius:'+ra+'px; margin-left:'+(-ww*0.5)+'px; border:1px solid '+cc.border+'; background:'+cc.button+'; left:4px; top:2px; height:'+(this.h-4)+'px; width:'+ww+'px;' );
 				this.c[6] = this.dom('div', this.css.basic + 'border-radius:' + ra + 'px; margin-left:' + -ww * 0.5 + 'px; background:' + cc.text + '; left:4px; top:3px; height:' + (this.h - 6) + 'px; width:' + ww + 'px;');
 			}
-
 			this.init();
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			if (l.x >= this.txl) return 'text';else if (l.x >= this.sa) return 'scroll';else return '';
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mouseup(e) {
 			if (this.isDown) this.isDown = false;
 		}
-
 		mousedown(e) {
 			let name = this.testZone(e);
 			if (!name) return false;
-
 			if (name === 'scroll') {
 				this.isDown = true;
 				this.old = this.value;
 				this.mousemove(e);
 			}
+
 			/*if( name === 'text' ){
 					this.setInput( this.c[2], function(){ this.validate() }.bind(this) );
 			}*/
 
-
 			return true;
 		}
-
 		mousemove(e) {
 			let nup = false;
 			let name = this.testZone(e);
-
 			if (name === 'scroll') {
 				this.mode(1);
-				this.cursor('w-resize'); //} else if(name === 'text'){ 
+				this.cursor('w-resize');
+				//} else if(name === 'text'){ 
 				//this.cursor('pointer');
 			} else {
 				this.cursor();
 			}
-
 			if (this.isDown) {
 				let n = (e.clientX - (this.zone.x + this.sa) - 3) / this.ww * this.range + this.min - this.old;
-
 				if (n >= this.step || n <= this.step) {
 					n = Math.floor(n / this.step);
 					this.value = this.numValue(this.old + n * this.step);
 					this.update(true);
 					this.old = this.value;
 				}
-
 				nup = true;
 			}
-
 			return nup;
 		}
-
 		wheel(e) {
 			let name = this.testZone(e);
-
 			if (name === 'scroll') {
 				let v = this.value - this.step * e.delta;
-
 				if (v > this.max) {
 					v = this.isCyclic ? this.min : this.max;
 				} else if (v < this.min) {
 					v = this.isCyclic ? this.max : this.min;
 				}
-
 				this.setValue(v);
 				this.old = v;
 				this.update(true);
 				return true;
 			}
-
 			return false;
-		} //keydown: function ( e ) { return true; },
-		// ----------------------
+		}
 
+		//keydown: function ( e ) { return true; },
+
+		// ----------------------
 
 		validate() {
 			let n = this.c[2].textContent;
-
 			if (!isNaN(n)) {
 				this.value = this.numValue(n);
 				this.update(true);
 			} else this.c[2].textContent = this.value + (this.isDeg ? '°' : '');
 		}
-
 		reset() {
 			//this.clearInput();
 			this.isDown = false;
 			this.mode(0);
 		}
-
 		mode(mode) {
 			let s = this.s;
 			let cc = this.colors;
-
 			switch (mode) {
 				case 0:
 					// base
@@ -5742,9 +5400,7 @@
 					s[4].background = cc.back;
 					s[5].background = cc.text;
 					if (this.model !== 0) s[6].background = cc.text; //cc.button;
-
 					break;
-
 				case 1:
 					// scroll over
 					//s[2].border = '1px dashed ' + this.colors.hide;
@@ -5752,11 +5408,9 @@
 					s[4].background = cc.back;
 					s[5].background = cc.textOver;
 					if (this.model !== 0) s[6].background = cc.textOver; //cc.overoff;
-
 					break;
 			}
 		}
-
 		update(up) {
 			let ww = Math.floor(this.ww * ((this.value - this.min) / this.range));
 			if (this.model !== 3) this.s[5].width = ww + 'px';
@@ -5764,19 +5418,20 @@
 			this.c[2].textContent = this.value + (this.isDeg ? '°' : '');
 			if (up) this.send();
 		}
-
 		rSize() {
 			super.rSize();
 			let w = this.sb - this.sc;
 			this.ww = w - 6;
 			let tx = this.sc;
 			if (this.isUI || !this.simple) tx = this.sc + 10;
-			this.txl = this.w - tx + 2; //let ty = Math.floor(this.h * 0.5) - 8;
+			this.txl = this.w - tx + 2;
+
+			//let ty = Math.floor(this.h * 0.5) - 8;
 
 			let s = this.s;
 			s[2].width = this.sc - 6 + 'px';
-			s[2].left = this.txl + 4 + 'px'; //s[2].top = ty + 'px';
-
+			s[2].left = this.txl + 4 + 'px';
+			//s[2].top = ty + 'px';
 			s[3].left = this.sa + 'px';
 			s[3].width = w + 'px';
 			s[4].left = this.sa + 'px';
@@ -5784,7 +5439,6 @@
 			s[5].left = this.sa + 3 + 'px';
 			this.update();
 		}
-
 	}
 
 	class TextInput extends Proto {
@@ -5796,58 +5450,59 @@
 			this.allway = o.allway || false;
 			this.editable = o.edit !== undefined ? o.edit : true;
 			this.isDown = false;
-			let cc = this.colors; // text
+			let cc = this.colors;
 
+			// text
 			this.c[2] = this.dom('div', this.css.txtselect + 'top:1px; height:' + (this.h - 2) + 'px; color:' + cc.text + '; background:' + cc.back + '; borderColor:' + cc.border + '; border-radius:' + this.radius + 'px;');
-			this.c[2].textContent = this.value; // selection
+			this.c[2].textContent = this.value;
 
-			this.c[3] = this.dom('div', this.css.txtselect + 'position:absolute; top:2px; height:' + (this.h - 4) + 'px; padding:0px 0px; width:0px; color:' + cc.textSelect + '; background:' + cc.select + '; border:none; border-radius:0px;'); // cursor
+			// selection
+			this.c[3] = this.dom('div', this.css.txtselect + 'position:absolute; top:2px; height:' + (this.h - 4) + 'px; padding:0px 0px; width:0px; color:' + cc.textSelect + '; background:' + cc.select + '; border:none; border-radius:0px;');
 
-			this.c[4] = this.dom('div', this.css.basic + 'top:2px; height:' + (this.h - 4) + 'px; width:0px; background:' + cc.text + ';'); // fake
+			// cursor
+			this.c[4] = this.dom('div', this.css.basic + 'top:2px; height:' + (this.h - 4) + 'px; width:0px; background:' + cc.text + ';');
 
+			// fake
 			this.c[5] = this.dom('div', this.css.txtselect + 'top:1px; height:' + (this.h - 2) + 'px; border:none; justify-content: center; font-style: italic; color:' + cc.border + ';');
 			if (this.value === '') this.c[5].textContent = this.placeHolder;
 			this.init();
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			if (l.x >= this.sa) return 'text';
 			return '';
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
 
-
 		mouseup(e) {
 			if (!this.editable) return;
-
 			if (this.isDown) {
 				this.isDown = false;
 				return this.mousemove(e);
 			}
-
 			return false;
 		}
-
 		mousedown(e) {
 			if (!this.editable) return;
 			let name = this.testZone(e);
-
 			if (!this.isDown) {
 				this.isDown = true;
 				if (name === 'text') this.setInput(this.c[2]);
 				return this.mousemove(e);
 			}
-
 			return false;
 		}
-
 		mousemove(e) {
 			if (!this.editable) return;
-			let name = this.testZone(e); //let l = this.local;
+			let name = this.testZone(e);
+
+			//let l = this.local;
 			//if( l.x === -1 && l.y === -1 ){ return;}
+
 			//if( l.x >= this.sa ) this.cursor('text');
 			//else this.cursor();
 
@@ -5856,18 +5511,19 @@
 			if (this.isDown) x = e.clientX - this.zone.x;
 			return this.upInput(x - this.sa - 3, this.isDown);
 		}
-
 		update() {
 			this.c[2].textContent = this.value;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		reset() {
 			this.cursor();
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 INPUT
 		// ----------------------
-
 
 		select(c, e, w, t) {
 			let s = this.s;
@@ -5878,7 +5534,6 @@
 			s[3].width = w + 'px';
 			this.c[3].innerHTML = t;
 		}
-
 		unselect() {
 			let s = this.s;
 			if (!s) return;
@@ -5886,17 +5541,17 @@
 			this.c[3].innerHTML = 't';
 			s[4].width = 0 + 'px';
 		}
-
 		validate(force) {
 			if (this.allway) force = true;
 			this.value = this.c[2].textContent;
 			if (this.value !== '') this.c[5].textContent = '';else this.c[5].textContent = this.placeHolder;
 			if (!force) return;
 			this.send();
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 REZISE
 		// ----------------------
-
 
 		rSize() {
 			super.rSize();
@@ -5906,7 +5561,6 @@
 			s[5].left = this.sa + 'px';
 			s[5].width = this.sb + 'px';
 		}
-
 	}
 
 	class Title extends Proto {
@@ -5914,42 +5568,34 @@
 			super(o);
 			let prefix = o.prefix || '';
 			this.c[2] = this.dom('div', this.css.txt + 'justify-content:right; width:60px; line-height:' + (this.h - 8) + 'px; color:' + this.colors.text);
-
 			if (this.h === 31) {
 				this.s[0].height = this.h + 'px';
 				this.s[1].top = 8 + 'px';
 				this.c[2].style.top = 8 + 'px';
 			}
-
 			let s = this.s;
-			s[1].justifyContent = o.align || 'left'; //s[1].textAlign = o.align || 'left';
-
+			s[1].justifyContent = o.align || 'left';
+			//s[1].textAlign = o.align || 'left';
 			s[1].fontWeight = o.fontWeight || 'bold';
 			this.c[1].textContent = this.txt.substring(0, 1).toUpperCase() + this.txt.substring(1).replace("-", " ");
 			this.c[2].textContent = prefix;
 			this.init();
 		}
-
 		text(txt) {
 			this.c[1].textContent = txt;
 		}
-
 		text2(txt) {
 			this.c[2].textContent = txt;
 		}
-
 		rSize() {
 			super.rSize();
 			this.s[1].width = this.w + 'px'; //- 50 + 'px';
-
 			this.s[2].left = this.w + 'px'; //- ( 50 + 26 ) + 'px';
 		}
-
 		setColor(c) {
 			this.s[1].color = c;
 			this.s[2].color = c;
 		}
-
 	}
 
 	class Select extends Proto {
@@ -5957,12 +5603,12 @@
 			super(o);
 			this.value = o.value || '';
 			this.isDown = false;
+			this.onActif = o.onActif || function () {};
 
-			this.onActif = o.onActif || function () {}; //let prefix = o.prefix || '';
-
-
+			//let prefix = o.prefix || '';
 			const cc = this.colors;
-			this.c[2] = this.dom('div', this.css.txt + this.css.button + ' top:1px; background:' + cc.button + '; height:' + (this.h - 2) + 'px; border:' + cc.buttonBorder + '; border-radius:15px; width:30px; left:10px;'); //this.c[2].style.color = this.fontColor;
+			this.c[2] = this.dom('div', this.css.txt + this.css.button + ' top:1px; background:' + cc.button + '; height:' + (this.h - 2) + 'px; border:' + cc.buttonBorder + '; border-radius:15px; width:30px; left:10px;');
+			//this.c[2].style.color = this.fontColor;
 
 			this.c[3] = this.dom('div', this.css.txtselect + 'height:' + (this.h - 4) + 'px; background:' + cc.inputBg + '; borderColor:' + cc.inputBorder + '; border-radius:' + this.radius + 'px;');
 			this.c[3].textContent = this.value;
@@ -5976,75 +5622,65 @@
 			this.isActif = false;
 			this.init();
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			if (l.x > this.sa && l.x < this.sa + 30) return 'over';
 			return '0';
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mouseup(e) {
 			if (this.isDown) {
 				//this.value = false;
-				this.isDown = false; //this.send();
-
+				this.isDown = false;
+				//this.send();
 				return this.mousemove(e);
 			}
-
 			return false;
 		}
-
 		mousedown(e) {
 			let name = this.testZone(e);
 			if (!name) return false;
-			this.isDown = true; //this.value = this.values[ name-2 ];
+			this.isDown = true;
+			//this.value = this.values[ name-2 ];
 			//this.send();
-
 			return this.mousemove(e);
 		}
-
 		mousemove(e) {
 			let up = false;
 			let name = this.testZone(e);
-
 			if (name === 'over') {
 				this.cursor('pointer');
 				up = this.mode(this.isDown ? 3 : 2);
 			} else {
 				up = this.reset();
 			}
-
 			return up;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		apply(v) {
 			v = v || '';
-
 			if (v !== this.value) {
 				this.value = v;
 				this.c[3].textContent = this.value;
 				this.send();
 			}
-
 			this.mode(1);
 		}
-
 		update() {
 			this.mode(3);
 		}
-
 		mode(n) {
 			let change = false;
 			let cc = this.colors;
-
 			if (this.stat !== n) {
 				if (n === 1) this.isActif = false;
-
 				if (n === 3) {
 					if (!this.isActif) {
 						this.isActif = true;
@@ -6054,51 +5690,41 @@
 						this.isActif = false;
 					}
 				}
-
 				if (n === 2 && this.isActif) n = 4;
 				this.stat = n;
-
 				switch (n) {
 					case 1:
 						this.s[2].color = cc.text;
 						this.s[2].background = cc.button;
 						break;
 					// base
-
 					case 2:
 						this.s[2].color = cc.textOver;
 						this.s[2].background = cc.overoff;
 						break;
 					// over
-
 					case 3:
 						this.s[2].color = cc.textOver;
 						this.s[2].background = cc.action;
 						break;
 					// down
-
 					case 4:
 						this.s[2].color = cc.textSelect;
 						this.s[2].background = cc.action;
 						break;
 					// actif
 				}
-
 				change = true;
 			}
-
 			return change;
 		}
-
 		reset() {
 			this.cursor();
 			return this.mode(this.isActif ? 4 : 1);
 		}
-
 		text(txt) {
 			this.c[3].textContent = txt;
 		}
-
 		rSize() {
 			super.rSize();
 			let s = this.s;
@@ -6107,7 +5733,6 @@
 			s[3].width = this.sb - 40 + 'px';
 			s[4].left = this.sa + 8 + 'px';
 		}
-
 	}
 
 	class Bitmap extends Proto {
@@ -6131,58 +5756,53 @@
 			this.stat = 1;
 			this.init();
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			if (l.x > this.sa && l.x < this.sa + 30) return 'over';
 			return '0';
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mouseup(e) {
 			if (this.isDown) {
 				//this.value = false;
-				this.isDown = false; //this.send();
-
+				this.isDown = false;
+				//this.send();
 				return this.mousemove(e);
 			}
-
 			return false;
 		}
-
 		mousedown(e) {
 			let name = this.testZone(e);
 			if (!name) return false;
-
 			if (name === 'over') {
 				this.isDown = true;
 				Files.load({
 					callback: this.changeBitmap.bind(this)
 				});
-			} //this.value = this.values[ name-2 ];
+			}
+
+			//this.value = this.values[ name-2 ];
 			//this.send();
-
-
 			return this.mousemove(e);
 		}
-
 		mousemove(e) {
 			let up = false;
 			let name = this.testZone(e);
-
 			if (name === 'over') {
 				this.cursor('pointer');
 				up = this.mode(this.isDown ? 3 : 2);
 			} else {
 				up = this.reset();
 			}
-
 			return up;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		changeBitmap(img, fname) {
 			if (img) {
@@ -6192,77 +5812,63 @@
 				this.img = null;
 				this.apply('null');
 			}
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		apply(v) {
 			v = v || '';
-
 			if (v !== this.value) {
 				this.value = v;
 				this.c[3].textContent = this.value;
-
 				if (this.img !== null) {
 					if (this.objectLink !== null) this.objectLink[this.val] = v;
 					if (this.callback) this.callback(this.value, this.img, this.name);
 				}
 			}
-
 			this.mode(1);
 		}
-
 		update() {
 			this.mode(3);
 		}
-
 		mode(n) {
 			let change = false;
 			let cc = this.colors;
-
 			if (this.stat !== n) {
 				this.stat = n;
-
 				switch (n) {
 					case 1:
 						this.s[2].color = cc.text;
 						this.s[2].background = cc.button;
 						break;
 					// base
-
 					case 2:
 						this.s[2].color = cc.textOver;
 						this.s[2].background = cc.overoff;
 						break;
 					// over
-
 					case 3:
 						this.s[2].color = cc.textOver;
 						this.s[2].background = cc.over;
 						break;
 					// down
-
 					case 4:
 						this.s[2].color = cc.textSelect;
 						this.s[2].background = cc.select;
 						break;
 					// actif
 				}
-
 				change = true;
 			}
-
 			return change;
 		}
-
 		reset() {
 			this.cursor();
 			return this.mode(this.isActif ? 4 : 1);
 		}
-
 		text(txt) {
 			this.c[3].textContent = txt;
 		}
-
 		rSize() {
 			super.rSize();
 			let s = this.s;
@@ -6271,7 +5877,6 @@
 			s[3].width = this.sb - 40 + 'px';
 			s[4].left = this.sa + 8 + 'px';
 		}
-
 	}
 
 	//import { Proto } from '../core/Proto.js';
@@ -6280,7 +5885,6 @@
 			if (o.selectable === undefined) o.selectable = true;
 			super(o);
 		}
-
 	}
 
 	class Item extends Proto {
@@ -6300,97 +5904,87 @@
 			});
 			this.s[1].marginLeft = 20 + 'px';
 			this.init();
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
 
-
 		mousemove(e) {
-			this.cursor('pointer'); //up = this.modes( this.isDown ? 3 : 2, name );
-		}
+			this.cursor('pointer');
 
+			//up = this.modes( this.isDown ? 3 : 2, name );
+		}
 		mousedown(e) {
 			if (this.isUI) this.main.resetItem();
 			this.selected(true);
 			this.send();
 			return true;
 		}
-
 		uiout() {
 			if (this.isSelect) this.mode(3);else this.mode(1);
 		}
-
 		uiover() {
 			if (this.isSelect) this.mode(4);else this.mode(2);
 		}
-
 		update() {}
+
 		/*rSize () {
 				
 				super.rSize();
 			}*/
 
-
 		mode(n) {
 			let change = false;
-
 			if (this.status !== n) {
 				this.status = n;
 				let s = this.s,
-						cc = this.colors;
-
+					cc = this.colors;
 				switch (n) {
 					case 1:
 						this.status = 1;
 						s[1].color = cc.text;
 						s[0].background = 'none';
 						break;
-
 					case 2:
 						this.status = 2;
 						s[1].color = cc.textOver;
 						s[0].background = cc.back;
 						break;
-
 					case 3:
 						this.status = 3;
 						s[1].color = cc.textSelect;
 						s[0].background = cc.select;
 						break;
-
 					case 4:
 						this.status = 4;
 						s[1].color = cc.textOver;
 						s[0].background = cc.over;
 						break;
 				}
-
 				change = true;
 			}
-
 			return change;
 		}
-
 		reset() {
-			this.cursor(); // return this.mode( 1 );
+			this.cursor();
+			// return this.mode( 1 );
 		}
-
 		selected(b) {
 			if (this.isSelect) this.mode(1);
 			this.isSelect = b || false;
 			if (this.isSelect) this.mode(3);
 		}
-
 	}
 
 	class Grid extends Proto {
 		constructor(o = {}) {
 			super(o);
+
 			/*this.values = o.values || [];
 				if( typeof this.values === 'string' ) this.values = [ this.values ];*/
 
 			this.values = [];
-
 			if (o.values) {
 				if (o.values instanceof Array) {
 					this.values = o.values;
@@ -6398,11 +5992,9 @@
 					this.values = [o.values];
 				} else if (o.values instanceof Object) {
 					this.refObject = o.values;
-
 					for (let g in this.refObject) this.values.push(g);
 				}
 			}
-
 			this.lng = this.values.length;
 			this.value = o.value || null;
 			let cc = this.colors;
@@ -6415,14 +6007,14 @@
 			this.grid = [2, Math.round(this.lng * 0.5)];
 			this.h = this.grid[1] * this.bsize[1] + this.grid[1] * this.spaces[1]; //+ 4 - (this.mtop*2) //+ (this.spaces[1] - this.mtop);
 
-			this.c[1].textContent = ''; //this.c[2] = this.dom( 'table', this.css.basic + 'width:100%; top:'+(this.spaces[1]-2)+'px; height:auto; border-collapse:separate; border:none; border-spacing: '+(this.spaces[0]-2)+'px '+(this.spaces[1]-2)+'px;' );
-
+			this.c[1].textContent = '';
+			//this.c[2] = this.dom( 'table', this.css.basic + 'width:100%; top:'+(this.spaces[1]-2)+'px; height:auto; border-collapse:separate; border:none; border-spacing: '+(this.spaces[0]-2)+'px '+(this.spaces[1]-2)+'px;' );
 			this.c[2] = this.dom('table', this.css.basic + 'width:100%; border-spacing: ' + (this.spaces[0] - 2) + 'px ' + this.spaces[1] + 'px; border:none;');
 			let n = 0,
-					b,
-					td,
-					tr,
-					sel;
+				b,
+				td,
+				tr,
+				sel;
 			this.res = -1;
 			this.isDown = false;
 			this.neverlock = true;
@@ -6430,15 +6022,12 @@
 			this.stat = [];
 			this.tmpX = [];
 			this.tmpY = [];
-
 			for (let i = 0; i < this.grid[1]; i++) {
 				tr = this.c[2].insertRow();
 				tr.style.cssText = 'pointer-events:none;';
-
 				for (let j = 0; j < this.grid[0]; j++) {
 					td = tr.insertCell();
 					td.style.cssText = 'pointer-events:none;';
-
 					if (this.values[n]) {
 						sel = false;
 						if (this.values[n] === this.value && this.isSelectable) sel = true;
@@ -6455,16 +6044,13 @@
 						b.style.cssText = this.css.txt + 'position:static; width:' + this.bsize[0] + 'px; height:' + this.bsize[1] + 'px; text-align:center; left:auto; right:auto; background:none;';
 						td.appendChild(b);
 					}
-
 					if (j === 0) b.style.cssText += 'float:right;';else b.style.cssText += 'float:left;';
 					n++;
 				}
 			}
-
 			this.s[0].border = 'none';
 			this.init();
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return -1;
@@ -6475,143 +6061,119 @@
 			let c = -1;
 			let line = -1;
 			let i = this.grid[0];
-
 			while (i--) {
 				if (l.x > tx[i][0] && l.x < tx[i][1]) c = i;
 			}
-
 			i = this.grid[1];
-
 			while (i--) {
 				if (l.y > ty[i][0] && l.y < ty[i][1]) line = i;
 			}
-
 			if (c !== -1 && line !== -1) {
 				id = c + line * 2;
 				if (id > this.lng - 1) id = -1;
 			}
-
 			return id;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
-
 
 		mouseup(e) {
 			if (!this.isDown) return false;
 			this.isDown = false;
-
 			if (this.res !== -1) {
 				this.value = this.values[this.res];
 				this.send();
 			}
-
 			return this.mousemove(e);
 		}
-
 		mousedown(e) {
 			if (this.isDown) return false;
 			this.isDown = true;
 			return this.mousemove(e);
 		}
-
 		mousemove(e) {
 			let up = false;
 			this.res = this.testZone(e);
-
 			if (this.res !== -1) {
 				this.cursor('pointer');
 				up = this.modes(this.isDown ? 3 : 2, this.res);
 			} else {
 				up = this.reset();
 			}
-
 			return up;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 MODE
 		// -----------------------
 
-
 		modes(N = 1, id = -1) {
 			let i = this.lng,
-					w,
-					n,
-					r = false;
-
+				w,
+				n,
+				r = false;
 			while (i--) {
 				n = N;
 				w = this.isSelectable ? this.values[i] === this.value : false;
-
 				if (i === id) {
 					if (w && n === 2) n = 3;
 				} else {
 					n = 1;
 					if (w) n = 4;
 				}
-
 				if (this.mode(n, i)) r = true;
 			}
-
 			return r;
 		}
-
 		mode(n, id) {
 			let change = false;
 			let cc = this.colors,
-					s = this.buttons;
+				s = this.buttons;
 			let i = id;
-
 			if (this.stat[id] !== n) {
 				this.stat[id] = n;
-
 				switch (n) {
 					case 1:
 						s[i].style.color = cc.text;
 						s[i].style.background = cc.button;
 						break;
-
 					case 2:
 						s[i].style.color = cc.textOver;
 						s[i].style.background = cc.overoff;
 						break;
-
 					case 3:
 						s[i].style.color = cc.textOver;
 						s[i].style.background = cc.over;
 						break;
-
 					case 4:
 						s[i].style.color = cc.textSelect;
 						s[i].style.background = cc.select;
 						break;
 				}
-
 				change = true;
 			}
-
 			return change;
-		} // ----------------------
+		}
 
+		// ----------------------
 
 		reset() {
 			this.res = -1;
 			this.cursor();
 			return this.modes();
 		}
-
 		label(string, n) {
 			this.buttons[n].textContent = string;
 		}
-
 		icon(string, y, n) {
 			this.buttons[n].style.padding = (y || 0) + 'px 0px';
 			this.buttons[n].innerHTML = string;
 		}
-
 		testW() {
 			let vw = this.spaces[0] * 3 + this.bsizeMax * 2,
-					rz = false;
-
+				rz = false;
 			if (vw > this.w) {
 				this.bsize[0] = (this.w - this.spaces[0] * 3) * 0.5;
 				rz = true;
@@ -6621,20 +6183,16 @@
 					rz = true;
 				}
 			}
-
 			if (!rz) return;
 			let i = this.buttons.length;
-
 			while (i--) this.buttons[i].style.width = this.bsize[0] + 'px';
 		}
-
 		rSize() {
 			super.rSize();
 			this.testW();
 			let mid;
 			this.tmpX = [];
 			this.tmpY = [];
-
 			for (let j = 0; j < this.grid[0]; j++) {
 				if (j === 0) {
 					mid = this.w * 0.5 - this.spaces[0] * 0.5;
@@ -6644,15 +6202,12 @@
 					this.tmpX.push([mid, mid + this.bsize[0]]);
 				}
 			}
-
 			mid = this.spaces[1];
-
 			for (let i = 0; i < this.grid[1]; i++) {
 				this.tmpY.push([mid, mid + this.bsize[1]]);
 				mid += this.bsize[1] + this.spaces[1];
 			}
 		}
-
 	}
 
 	class Pad2D extends Proto {
@@ -6660,8 +6215,9 @@
 			super(o);
 			this.autoWidth = false;
 			this.minw = this.w;
-			this.diam = o.diam || this.w; //this.margin = 15;
+			this.diam = o.diam || this.w;
 
+			//this.margin = 15;
 			this.pos = new V2(0, 0);
 			this.maxPos = 90;
 			this.model = o.stype || 0;
@@ -6669,10 +6225,13 @@
 			this.min = o.min === undefined ? -1 : o.min;
 			this.max = o.max === undefined ? 1 : o.max;
 			this.range = (this.max - this.min) * 0.5;
-			this.cmode = 0; //console.log(this.range)
+			this.cmode = 0;
+
+			//console.log(this.range)
 
 			this.c[0].style.display = 'block';
 			this.precision = o.precision === undefined ? 2 : o.precision;
+
 			/*this.bounds = {};
 			this.bounds.x1 = o.x1 || -1;
 			this.bounds.x2 = o.x2 || 1;
@@ -6685,21 +6244,27 @@
 
 			this.value = Array.isArray(o.value) && o.value.length == 2 ? o.value : [0, 0];
 			this.h = o.h || this.w + 10;
-			this.c[0].style.width = this.w + 'px'; // Title
+			this.c[0].style.width = this.w + 'px';
 
+			// Title
 			if (this.c[1] !== undefined) {
 				// with title
+
 				this.c[1].style.width = '100%';
 				this.c[1].style.justifyContent = 'center';
 				this.top = 10;
 				this.h += 10;
-			} //this.top -= this.margin
+			}
 
+			//this.top -= this.margin
 
-			let cc = this.colors; // Value
+			let cc = this.colors;
 
+			// Value
 			this.c[2] = this.dom('div', this.css.txt + 'justify-content:center; top:' + (this.h - 20) + 'px; width:100%; color:' + cc.text);
-			this.c[2].textContent = this.value; // Pad
+			this.c[2].textContent = this.value;
+
+			// Pad
 
 			let pad = this.getPad2d();
 			this.setSvg(pad, 'fill', cc.back, 0);
@@ -6718,22 +6283,21 @@
 			this.init();
 			this.setValue();
 		}
-
 		testZone(e) {
 			let l = this.local;
 			if (l.x === -1 && l.y === -1) return '';
 			if (l.y <= this.c[1].offsetHeight) return 'title';else if (l.y > this.h - this.c[2].offsetHeight) return 'text';else return 'pad';
+
 			/*if( ( l.x >= this.margin ) && ( l.x <= this.w - this.margin ) && ( l.y >= this.top + this.margin ) && ( l.y <= this.top + this.w - this.margin ) ) {
 					return 'pad';
 			}*/
+
 			//return '';
 		}
-
 		mouseup(e) {
 			this.isDown = false;
 			return this.mode(0);
 		}
-
 		mousedown(e) {
 			if (this.testZone(e) === 'pad') {
 				this.isDown = true;
@@ -6741,7 +6305,6 @@
 				return this.mode(1);
 			}
 		}
-
 		mousemove(e) {
 			if (!this.isDown) return;
 			let x = this.w * 0.5 - (e.clientX - this.zone.x);
@@ -6750,26 +6313,28 @@
 			x = -(x * r);
 			y = -(y * r);
 			x = Tools.clamp(x, -this.maxPos, this.maxPos);
-			y = Tools.clamp(y, -this.maxPos, this.maxPos); //let x = e.clientX - this.zone.x;
+			y = Tools.clamp(y, -this.maxPos, this.maxPos);
+
+			//let x = e.clientX - this.zone.x;
 			//let y = e.clientY - this.zone.y - this.top;
 
 			/*if( x < this.margin ) x = this.margin;
 			if( x > this.w - this.margin ) x = this.w - this.margin;
 			if( y < this.margin ) y = this.margin;
 			if( y > this.w - this.margin ) y = this.w - this.margin;*/
+
 			//console.log(x,y)
 
 			this.setPos([x, y]);
 			this.update(true);
 		}
-
 		mode(mode) {
 			if (this.cmode === mode) return false;
 			let cc = this.colors;
-
 			switch (mode) {
 				case 0:
 					// base
+
 					this.s[2].color = cc.text;
 					this.setSvg(this.c[3], 'fill', cc.back, 0);
 					this.setSvg(this.c[3], 'fill', cc.button, 1);
@@ -6777,9 +6342,9 @@
 					this.setSvg(this.c[3], 'stroke', cc.back, 3);
 					this.setSvg(this.c[3], 'stroke', cc.text, 4);
 					break;
-
 				case 1:
 					// down
+
 					this.s[2].color = cc.textSelect;
 					this.setSvg(this.c[3], 'fill', cc.backoff, 0);
 					this.setSvg(this.c[3], 'fill', cc.overoff, 1);
@@ -6788,18 +6353,16 @@
 					this.setSvg(this.c[3], 'stroke', cc.textSelect, 4);
 					break;
 			}
-
 			this.cmode = mode;
 			return true;
 		}
-
 		update(up) {
 			//if( up === undefined ) up = true;
+
 			this.c[2].textContent = this.value;
 			this.updateSVG();
 			if (up) this.send();
 		}
-
 		updateSVG() {
 			if (this.model == 1) {
 				this.setSvg(this.c[3], 'y1', this.pos.y, 2);
@@ -6807,21 +6370,20 @@
 				this.setSvg(this.c[3], 'x1', this.pos.x, 3);
 				this.setSvg(this.c[3], 'x2', this.pos.x, 3);
 			}
-
 			this.setSvg(this.c[3], 'cx', this.pos.x, 4);
 			this.setSvg(this.c[3], 'cy', this.pos.y, 4);
 		}
-
 		setPos(p) {
 			//if( p === undefined ) p = [ this.w / 2, this.w / 2 ];
+
 			this.pos.set(p[0] + 128, p[1] + 128);
 			let r = 1 / this.maxPos;
 			this.value[0] = (p[0] * r * this.range).toFixed(this.precision);
 			this.value[1] = (p[1] * r * this.range).toFixed(this.precision);
 		}
-
 		setValue(v, up = false) {
 			if (v === undefined) v = this.value;
+
 			/*if ( v[0] < this.bounds.x1 ) v[0] = this.bounds.x1;
 			if ( v[0] > this.bounds.x2 ) v[0] = this.bounds.x2;
 			if ( v[1] < this.bounds.y1 ) v[1] = this.bounds.y1;
@@ -6829,10 +6391,13 @@
 
 			this.value[0] = Math.min(this.max, Math.max(this.min, v[0])).toFixed(this.precision) * 1;
 			this.value[1] = Math.min(this.max, Math.max(this.min, v[1])).toFixed(this.precision) * 1;
-			this.pos.set(this.value[0] / this.range * this.maxPos + 128, this.value[1] / this.range * this.maxPos + 128); //console.log(this.pos)
+			this.pos.set(this.value[0] / this.range * this.maxPos + 128, this.value[1] / this.range * this.maxPos + 128);
+
+			//console.log(this.pos)
 
 			this.update(up);
 		}
+
 		/*lerp( s1, s2, d1, d2, c = true ) {
 					let s = ( d2 - d1 ) / ( s2 - s1 );
 					return c ? ( v ) => { 
@@ -6841,131 +6406,106 @@
 					return ( v - s1 ) * s + d1
 				}
 			}*/
-
-
 	}
 
 	const add = function () {
 		let a = arguments;
 		let type,
-				o,
-				ref = false,
-				n = null;
-
+			o,
+			ref = false,
+			n = null;
 		if (typeof a[0] === 'string') {
 			type = a[0];
 			o = a[1] || {};
 		} else if (typeof a[0] === 'object') {
 			// like dat gui
+
 			ref = true;
 			if (a[2] === undefined) [].push.call(a, {});
 			type = a[2].type ? a[2].type : autoType(a[0][a[1]], a[2]);
 			o = a[2];
 			o.name = a[1];
-
+			if (o.hasOwnProperty("displayName")) o.name = o.displayName;
 			if (type === 'list' && !o.list) {
 				o.list = a[0][a[1]];
 			} else o.value = a[0][a[1]];
 		}
-
 		let name = type.toLowerCase();
-
 		if (name === 'group') {
-			o.add = add; //o.dx = 8
+			o.add = add;
+			//o.dx = 8
 		}
-
 		switch (name) {
 			case 'bool':
 			case 'boolean':
 				n = new Bool(o);
 				break;
-
 			case 'button':
 				n = new Button(o);
 				break;
-
 			case 'circular':
 				n = new Circular(o);
 				break;
-
 			case 'color':
 				n = new Color(o);
 				break;
-
 			case 'fps':
 				n = new Fps(o);
 				break;
-
 			case 'graph':
 				n = new Graph(o);
 				break;
-
 			case 'group':
 				n = new Group(o);
 				break;
-
 			case 'joystick':
 				n = new Joystick(o);
 				break;
-
 			case 'knob':
 				n = new Knob(o);
 				break;
-
 			case 'list':
 				n = new List(o);
 				break;
-
 			case 'numeric':
 			case 'number':
 				n = new Numeric(o);
 				break;
-
 			case 'slide':
 				n = new Slide(o);
 				break;
-
 			case 'textInput':
 			case 'string':
 				n = new TextInput(o);
 				break;
-
 			case 'title':
 			case 'text':
 				n = new Title(o);
 				break;
-
 			case 'select':
 				n = new Select(o);
 				break;
-
 			case 'bitmap':
 				n = new Bitmap(o);
 				break;
-
 			case 'selector':
 				n = new Selector(o);
 				break;
-
 			case 'empty':
 			case 'space':
 				n = new Empty(o);
 				break;
-
 			case 'item':
 				n = new Item(o);
 				break;
-
 			case 'grid':
 				n = new Grid(o);
 				break;
-
 			case 'pad2d':
 			case 'pad':
 				n = new Pad2D(o);
 				break;
 		}
-
 		if (n !== null) {
 			Roots.needResize = true;
 			if (ref) n.setReferency(a[0], a[1]);
@@ -6993,54 +6533,67 @@
 	class Gui {
 		constructor(o = {}) {
 			this.isGui = true;
-			this.name = 'gui'; // for 3d
+			this.name = 'gui';
 
+			// for 3d
 			this.canvas = null;
 			this.screen = null;
-			this.plane = o.plane || null; // color
+			this.plane = o.plane || null;
 
+			// color
 			if (o.config) o.colors = o.config;
-			if (o.colors) this.setConfig(o.colors);else this.colors = Tools.defineColor(o); //this.cleanning = false
-			// style
+			if (o.colors) this.setConfig(o.colors);else this.colors = Tools.defineColor(o);
 
+			//this.cleanning = false
+
+			// style
 			this.css = Tools.cloneCss();
 			this.isReset = true;
-			this.tmpAdd = null; //this.tmpH = 0
+			this.tmpAdd = null;
+			//this.tmpH = 0
 
 			this.isCanvas = o.isCanvas || false;
 			this.isCanvasOnly = false;
+
+			// option to define whether the event listeners should be added or not
+			Roots.addDOMEventListeners = o.hasOwnProperty("addDOMEventListeners") ? o.addDOMEventListeners : true;
 			this.callback = o.callback === undefined ? null : o.callback;
 			this.forceHeight = o.maxHeight || 0;
 			this.lockHeight = o.lockHeight || false;
 			this.isItemMode = o.itemMode !== undefined ? o.itemMode : false;
-			this.cn = ''; // size define
+			this.cn = '';
 
+			// size define
 			this.size = Tools.size;
 			if (o.p !== undefined) this.size.p = o.p;
 			if (o.w !== undefined) this.size.w = o.w;
 			if (o.h !== undefined) this.size.h = o.h;
 			if (o.s !== undefined) this.size.s = o.s;
-			this.size.h = this.size.h < 11 ? 11 : this.size.h; // local mouse and zone
+			this.size.h = this.size.h < 11 ? 11 : this.size.h;
 
+			// local mouse and zone
 			this.local = new V2().neg();
 			this.zone = {
 				x: 0,
 				y: 0,
 				w: this.size.w,
 				h: 0
-			}; // virtual mouse
+			};
 
+			// virtual mouse
 			this.mouse = new V2().neg();
-			this.h = 0; //this.prevY = -1;
-
+			this.h = 0;
+			//this.prevY = -1;
 			this.sw = 0;
 			this.margin = this.colors.sy;
-			this.marginDiv = Tools.isDivid(this.margin); // bottom and close height
+			this.marginDiv = Tools.isDivid(this.margin);
 
+			// bottom and close height
 			this.isWithClose = o.close !== undefined ? o.close : true;
 			this.bh = !this.isWithClose ? 0 : this.size.h;
-			this.autoResize = o.autoResize === undefined ? true : o.autoResize; // default position
+			this.autoResize = o.autoResize === undefined ? true : o.autoResize;
 
+			// default position
 			this.isCenter = o.center || false;
 			this.cssGui = o.css !== undefined ? o.css : this.isCenter ? '' : 'right:10px;';
 			this.isOpen = o.open !== undefined ? o.open : true;
@@ -7056,144 +6609,170 @@
 			this.isNewTarget = false;
 			let cc = this.colors;
 			this.content = Tools.dom('div', this.css.basic + ' width:0px; height:auto; top:0px; background:' + cc.content + '; ' + this.cssGui);
-			this.innerContent = Tools.dom('div', this.css.basic + 'width:100%; top:0; left:0; height:auto; overflow:hidden;'); //this.innerContent = Tools.dom( 'div', this.css.basic + this.css.button + 'width:100%; top:0; left:0; height:auto; overflow:hidden;');
+			this.innerContent = Tools.dom('div', this.css.basic + 'width:100%; top:0; left:0; height:auto; overflow:hidden;');
+			//this.innerContent = Tools.dom( 'div', this.css.basic + this.css.button + 'width:100%; top:0; left:0; height:auto; overflow:hidden;');
+			this.content.appendChild(this.innerContent);
 
-			this.content.appendChild(this.innerContent); //this.inner = Tools.dom( 'div', this.css.basic + 'width:100%; left:0; ')
-
+			//this.inner = Tools.dom( 'div', this.css.basic + 'width:100%; left:0; ')
 			this.useFlex = true;
 			let flexible = this.useFlex ? 'display:flex; flex-flow: row wrap;' : ''; //' display:flex; justify-content:start; align-items:start;flex-direction: column; justify-content: center; align-items: center;';
-
 			this.inner = Tools.dom('div', this.css.basic + flexible + 'width:100%; left:0; ');
-			this.innerContent.appendChild(this.inner); // scroll
+			this.innerContent.appendChild(this.inner);
 
+			// scroll
 			this.scrollBG = Tools.dom('div', this.css.basic + 'right:0; top:0; width:' + (this.size.s - 1) + 'px; height:10px; display:none; background:' + cc.background + ';');
 			this.content.appendChild(this.scrollBG);
 			this.scroll = Tools.dom('div', this.css.basic + 'background:' + cc.button + '; right:2px; top:0; width:' + (this.size.s - 4) + 'px; height:10px;');
-			this.scrollBG.appendChild(this.scroll); // bottom button
+			this.scrollBG.appendChild(this.scroll);
 
+			// bottom button
 			this.bottomText = o.bottomText || ['open', 'close'];
 			let r = cc.radius;
 			this.bottom = Tools.dom('div', this.css.txt + 'width:100%; top:auto; bottom:0; left:0; border-bottom-right-radius:' + r + 'px; border-bottom-left-radius:' + r + 'px; justify-content:center; height:' + this.bh + 'px; line-height:' + (this.bh - 5) + 'px; color:' + cc.text + ';'); // border-top:1px solid '+Tools.colors.stroke+';');
-
 			this.content.appendChild(this.bottom);
 			this.bottom.textContent = this.isOpen ? this.bottomText[1] : this.bottomText[0];
-			this.bottom.style.background = cc.background; //
+			this.bottom.style.background = cc.background;
+
+			//
 
 			this.parent = o.parent !== undefined ? o.parent : null;
 			this.parent = o.target !== undefined ? o.target : this.parent;
-
 			if (this.parent === null && !this.isCanvas) {
 				this.parent = document.body;
 			}
-
 			if (this.parent !== null) this.parent.appendChild(this.content);
 			if (this.isCanvas && this.parent === null) this.isCanvasOnly = true;
-
 			if (!this.isCanvasOnly) {
 				this.content.style.pointerEvents = 'auto';
 			} else {
 				this.content.style.left = '0px';
 				this.content.style.right = 'auto';
 				o.transition = 0;
-			} // height transition
+			}
 
-
+			// height transition
 			this.transition = o.transition !== undefined ? o.transition : Tools.transition;
 			if (this.transition) setTimeout(this.addTransition.bind(this), 1000);
 			this.setWidth();
 			if (this.isCanvas) this.makeCanvas();
 			Roots.add(this);
 		}
-
+		triggerMouseDown(x, y) {
+			Roots.handleEvent({
+				type: "pointerdown",
+				clientX: x,
+				clientY: y,
+				delta: 0,
+				key: null,
+				keyCode: NaN
+			});
+		}
+		triggerMouseMove() {
+			Roots.handleEvent({
+				type: "pointermove",
+				clientX: -1,
+				clientY: -1,
+				delta: 0,
+				key: null,
+				keyCode: NaN
+			});
+		}
+		triggerMouseUp(x, y) {
+			/*
+				clientX,clientY are no used when isCanvas==true
+			*/
+			Roots.handleEvent({
+				type: "pointerup",
+				clientX: x,
+				clientY: y,
+				delta: 0,
+				key: null,
+				keyCode: NaN
+			});
+		}
 		setTop(t, h) {
 			this.content.style.top = t + 'px';
 			if (h !== undefined) this.forceHeight = h;
 			this.calc();
 			Roots.needReZone = true;
 		}
-
 		addTransition() {
 			if (this.transition && !this.isCanvas) {
 				this.innerContent.style.transition = 'height ' + this.transition + 's ease-out';
 				this.content.style.transition = 'height ' + this.transition + 's ease-out';
-				this.bottom.style.transition = 'top ' + this.transition + 's ease-out'; //this.bottom.addEventListener("transitionend", Roots.resize, true);
+				this.bottom.style.transition = 'top ' + this.transition + 's ease-out';
+				//this.bottom.addEventListener("transitionend", Roots.resize, true);
 			}
-
 			let i = this.uis.length;
-
 			while (i--) this.uis[i].addTransition();
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 CANVAS
 		// ----------------------
 
-
 		onDraw() {}
-
 		makeCanvas() {
 			this.canvas = document.createElementNS('http://www.w3.org/1999/xhtml', "canvas");
 			this.canvas.width = this.zone.w;
-			this.canvas.height = this.forceHeight ? this.forceHeight : this.zone.h; //console.log( this.canvas.width, this.canvas.height )
-		}
+			this.canvas.height = this.forceHeight ? this.forceHeight : this.zone.h;
 
+			//console.log( this.canvas.width, this.canvas.height )
+		}
 		draw(force) {
 			if (this.canvas === null) return;
 			let w = this.zone.w;
 			let h = this.forceHeight ? this.forceHeight : this.zone.h;
 			Roots.toCanvas(this, w, h, force);
-		} //////
+		}
 
+		//////
 
 		getDom() {
 			return this.content;
 		}
-
 		noMouse() {
 			this.mouse.neg();
 		}
-
 		setMouse(uv, flip = true) {
-			if (flip) this.mouse.set(Math.round(uv.x * this.canvas.width), this.canvas.height - Math.round(uv.y * this.canvas.height));else this.mouse.set(Math.round(uv.x * this.canvas.width), Math.round(uv.y * this.canvas.height)); //this.mouse.set( m.x, m.y );
-		}
+			if (flip) this.mouse.set(Math.round(uv.x * this.canvas.width), this.canvas.height - Math.round(uv.y * this.canvas.height));else this.mouse.set(Math.round(uv.x * this.canvas.width), Math.round(uv.y * this.canvas.height));
+			//this.mouse.set( m.x, m.y );
 
+			//console.log("setMouse "+uv.x+" "+uv.y)
+		}
 		setConfig(o) {
 			// reset to default text 
 			Tools.setText();
 			this.colors = Tools.defineColor(o);
 		}
-
 		setColors(o) {
 			for (let c in o) {
 				if (this.colors[c]) this.colors[c] = o[c];
 			}
 		}
-
 		setText(size, color, font, shadow) {
 			Tools.setText(size, color, font, shadow);
 		}
-
 		hide(b) {
 			this.content.style.visibility = b ? 'hidden' : 'visible';
 		}
-
 		display(v = false) {
 			this.content.style.visibility = v ? 'visible' : 'hidden';
 		}
-
 		onChange(f) {
 			this.callback = f || null;
 			return this;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 STYLES
 		// ----------------------
-
 
 		mode(n) {
 			let needChange = false;
 			let cc = this.colors;
-
 			if (n !== this.cn) {
 				this.cn = n;
-
 				switch (n) {
 					case 'def':
 						Roots.cursor();
@@ -7201,18 +6780,17 @@
 						this.bottom.style.background = cc.background;
 						this.bottom.style.color = cc.text;
 						break;
-					//case 'scrollDef': this.scroll.style.background = this.colors.scroll; break;
 
+					//case 'scrollDef': this.scroll.style.background = this.colors.scroll; break;
 					case 'scrollOver':
 						Roots.cursor('ns-resize');
 						this.scroll.style.background = cc.select;
 						break;
-
 					case 'scrollDown':
 						this.scroll.style.background = cc.select;
 						break;
-					//case 'bottomDef': this.bottom.style.background = this.colors.background; break;
 
+					//case 'bottomDef': this.bottom.style.background = this.colors.background; break;
 					case 'bottomOver':
 						Roots.cursor('pointer');
 						this.bottom.style.background = cc.backgroundOver;
@@ -7220,34 +6798,34 @@
 						break;
 					//case 'bottomDown': this.bottom.style.background = this.colors.select; this.bottom.style.color = '#000'; break;
 				}
-
 				needChange = true;
 			}
-
 			return needChange;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 TARGET
 		// ----------------------
 
-
 		clearTarget() {
 			if (this.current === -1) return false;
-
 			if (this.proto.s) {
 				// if no s target is delete !!
 				this.proto.uiout();
 				this.proto.reset();
 			}
-
 			this.proto = null;
-			this.current = -1; ///console.log(this.isDown)//if(this.isDown)Roots.clearInput();
+			this.current = -1;
+
+			///console.log(this.isDown)//if(this.isDown)Roots.clearInput();
 
 			Roots.cursor();
 			return true;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 ZONE TEST
 		// ----------------------
-
 
 		testZone(e) {
 			let l = this.local;
@@ -7257,27 +6835,28 @@
 			let s = this.isScroll ? this.zone.w - this.size.s : this.zone.w;
 			if (l.y > this.zone.h - this.bh && l.y < this.zone.h) name = 'bottom';else name = l.x > s ? 'scroll' : 'content';
 			return name;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 EVENTS
 		// ----------------------
 
-
 		handleEvent(e) {
 			//if( this.cleanning ) return
+
+			//console.log("Gui.handleEvent")
+			//console.log(e);
 			let type = e.type;
 			let change = false;
 			let protoChange = false;
 			let name = this.testZone(e);
 			if (type === 'mouseup' && this.isDown) this.isDown = false;
 			if (type === 'mousedown' && !this.isDown) this.isDown = true;
-
 			if (this.isDown && this.isNewTarget) {
 				Roots.clearInput();
 				this.isNewTarget = false;
 			}
-
 			if (!name) return;
-
 			switch (name) {
 				case 'content':
 					e.clientY = this.isScroll ? e.clientY + this.decal : e.clientY;
@@ -7285,28 +6864,22 @@
 					if (this.proto) protoChange = this.proto.handleEvent(e);
 					if (type === 'mousemove') change = this.mode('def');
 					if (type === 'wheel' && !protoChange && this.isScroll) change = this.onWheel(e);
-
 					if (!Roots.lock) {
 						this.getNext(e, change);
 					}
-
 					break;
-
 				case 'bottom':
 					this.clearTarget();
 					if (type === 'mousemove') change = this.mode('bottomOver');
-
 					if (type === 'mousedown') {
 						this.isOpen = this.isOpen ? false : true;
-						this.bottom.textContent = this.isOpen ? this.bottomText[1] : this.bottomText[0]; //this.setHeight();
-
+						this.bottom.textContent = this.isOpen ? this.bottomText[1] : this.bottomText[0];
+						//this.setHeight();
 						this.calc();
 						this.mode('def');
 						change = true;
 					}
-
 					break;
-
 				case 'scroll':
 					this.clearTarget();
 					if (type === 'mousemove') change = this.mode('scrollOver');
@@ -7315,58 +6888,60 @@
 					if (this.isDown) this.update(e.clientY - this.zone.y - this.sh * 0.5);
 					break;
 			}
-
 			if (this.isDown) change = true;
 			if (protoChange) change = true;
 			if (type === 'keyup') change = true;
 			if (type === 'keydown') change = true;
 			if (change) this.draw();
 		}
-
 		getNext(e, change) {
 			let next = Roots.findTarget(this.uis, e);
-
 			if (next !== this.current) {
 				this.clearTarget();
 				this.current = next;
 				this.isNewTarget = true;
 			}
-
 			if (next !== -1) {
 				this.proto = this.uis[this.current];
 				this.proto.uiover();
 			}
 		}
-
 		onWheel(e) {
 			this.oy += 20 * e.delta;
 			this.update(this.oy);
 			return true;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 RESET
 		// ----------------------
 
-
 		reset(force) {
-			if (this.isReset) return; //this.resetItem();
+			if (this.isReset) return;
+
+			//this.resetItem();
 
 			this.mouse.neg();
-			this.isDown = false; //Roots.clearInput();
+			this.isDown = false;
 
+			//Roots.clearInput();
 			let r = this.mode('def');
 			let r2 = this.clearTarget();
 			if (r || r2) this.draw(true);
-			this.isReset = true; //Roots.lock = false;
-		} // ----------------------
+			this.isReset = true;
+
+			//Roots.lock = false;
+		}
+
+		// ----------------------
 		//	 ADD NODE
 		// ----------------------
 
-
 		add() {
 			//if(this.cleanning) this.cleanning = false
+
 			let a = arguments;
 			let ontop = false;
-
 			if (typeof a[1] === 'object') {
 				a[1].isUI = true;
 				a[1].main = this;
@@ -7377,107 +6952,101 @@
 					main: this
 				});else {
 					a[2].isUI = true;
-					a[2].main = this; //ontop = a[1].ontop ? a[1].ontop : false;
-
+					a[2].main = this;
+					//ontop = a[1].ontop ? a[1].ontop : false;
 					ontop = a[2].ontop ? a[2].ontop : false;
 				}
 			}
-
 			let u = add.apply(this, a);
 			if (u === null) return;
 			if (ontop) this.uis.unshift(u);else this.uis.push(u);
 			this.calc();
 			this.isEmpty = false;
 			return u;
-		} // remove one node
+		}
 
+		// remove one node
 
 		remove(n) {
 			if (n.dispose) n.dispose();
-		} // call after uis clear
+		}
 
+		// call after uis clear
 
 		clearOne(n) {
 			let id = this.uis.indexOf(n);
-
 			if (id !== -1) {
 				//this.calc( - (this.uis[ id ].h + 1 ) );
 				this.inner.removeChild(this.uis[id].c[0]);
 				this.uis.splice(id, 1);
 				this.calc();
 			}
-		} // clear all gui
+		}
 
+		// clear all gui
 
 		empty() {
 			//this.cleanning = true
-			//this.close();
-			let i = this.uis.length,
-					item;
 
+			//this.close();
+
+			let i = this.uis.length,
+				item;
 			while (i--) {
 				item = this.uis.pop();
 				this.inner.removeChild(item.c[0]);
 				item.dispose();
 			}
-
 			this.uis = [];
 			this.isEmpty = true;
 			this.calc();
 		}
-
 		clear() {
 			this.empty();
 		}
-
 		clear2() {
 			setTimeout(this.empty.bind(this), 0);
 		}
-
 		dispose() {
 			this.clear();
 			if (this.parent !== null) this.parent.removeChild(this.content);
 			Roots.remove(this);
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 ITEMS SPECIAL
 		// ----------------------
-
 
 		resetItem() {
 			if (!this.isItemMode) return;
 			let i = this.uis.length;
-
 			while (i--) this.uis[i].selected();
 		}
-
 		setItem(name) {
 			if (!this.isItemMode) return;
 			name = name || '';
 			this.resetItem();
-
 			if (!name) {
 				this.update(0);
 				return;
 			}
-
 			let i = this.uis.length;
-
 			while (i--) {
 				if (this.uis[i].value === name) {
 					this.uis[i].selected(true);
 					if (this.isScroll) this.update(i * (this.uis[i].h + this.margin) * this.ratio);
 				}
 			}
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 SCROLL
 		// ----------------------
-
 
 		upScroll(b) {
 			this.sw = b ? this.size.s : 0;
 			this.oy = b ? this.oy : 0;
 			this.scrollBG.style.display = b ? 'block' : 'none';
-
 			if (b) {
 				this.total = this.h;
 				this.maxView = this.maxHeight;
@@ -7488,42 +7057,37 @@
 				this.scrollBG.style.height = this.maxView + 'px';
 				this.scroll.style.height = this.sh + 'px';
 			}
-
 			this.setItemWidth(this.zone.w - this.sw);
 			this.update(this.oy);
 		}
-
 		update(y) {
 			y = Tools.clamp(y, 0, this.range);
 			this.decal = Math.floor(y / this.ratio);
 			this.inner.style.top = -this.decal + 'px';
 			this.scroll.style.top = Math.floor(y) + 'px';
 			this.oy = y;
-		} // ----------------------
+		}
+
+		// ----------------------
 		//	 RESIZE FUNCTION
 		// ----------------------
-
 
 		calcUis() {
 			return Roots.calcUis(this.uis, this.zone, this.zone.y);
 		}
-
 		calc() {
 			clearTimeout(this.tmp);
 			this.tmp = setTimeout(this.setHeight.bind(this), 10);
 		}
-
 		setHeight() {
 			if (this.tmp) clearTimeout(this.tmp);
 			this.zone.h = this.bh;
 			this.isScroll = false;
-
 			if (this.isOpen) {
 				this.h = this.calcUis();
 				let hhh = this.forceHeight ? this.forceHeight + this.zone.y : window.innerHeight;
 				this.maxHeight = hhh - this.zone.y - this.bh;
 				let diff = this.h - this.maxHeight;
-
 				if (diff > 1) {
 					this.isScroll = true;
 					this.zone.h = this.maxHeight + this.bh;
@@ -7531,7 +7095,6 @@
 					this.zone.h = this.h + this.bh;
 				}
 			}
-
 			this.upScroll(this.isScroll);
 			this.innerContent.style.height = this.zone.h - this.bh + 'px';
 			this.content.style.height = this.zone.h + 'px';
@@ -7539,11 +7102,9 @@
 			if (this.forceHeight && this.lockHeight) this.content.style.height = this.forceHeight + 'px';
 			if (this.isCanvas) this.draw(true);
 		}
-
 		rezone() {
 			Roots.needReZone = true;
 		}
-
 		setWidth(w) {
 			if (w) this.zone.w = w;
 			this.zone.w = Math.floor(this.zone.w);
@@ -7551,16 +7112,13 @@
 			if (this.isCenter) this.content.style.marginLeft = -Math.floor(this.zone.w * 0.5) + 'px';
 			this.setItemWidth(this.zone.w - this.sw);
 		}
-
 		setItemWidth(w) {
 			let i = this.uis.length;
-
 			while (i--) {
 				this.uis[i].setSize(w);
 				this.uis[i].rSize();
 			}
 		}
-
 	}
 
 	exports.Files = Files;
@@ -7571,4 +7129,4 @@
 
 	Object.defineProperty(exports, '__esModule', { value: true });
 
-})));
+}));

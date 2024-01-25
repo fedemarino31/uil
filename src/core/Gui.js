@@ -39,6 +39,9 @@ export class Gui {
 
         this.isCanvas = o.isCanvas || false
         this.isCanvasOnly = false
+
+        // option to define whether the event listeners should be added or not
+        Roots.addDOMEventListeners=(o.hasOwnProperty("addDOMEventListeners"))?o.addDOMEventListeners:true;
         
         this.callback = o.callback  === undefined ? null : o.callback
 
@@ -164,6 +167,43 @@ export class Gui {
 
     }
 
+    triggerMouseDown(x,y){
+        Roots.handleEvent({
+            type:"pointerdown",
+            clientX:x,
+            clientY:y,
+            delta:0,
+            key:null,
+            keyCode:NaN
+        })   
+    }
+
+
+    triggerMouseMove(){
+        Roots.handleEvent({
+            type:"pointermove",
+            clientX:-1,
+            clientY:-1,
+            delta:0,
+            key:null,
+            keyCode:NaN
+        })   
+    }
+    triggerMouseUp(x,y){
+        /*
+
+        clientX,clientY are no used when isCanvas==true
+        */
+        Roots.handleEvent({
+            type:"pointerup",
+            clientX:x,
+            clientY:y,
+            delta:0,
+            key:null,
+            keyCode:NaN
+        })   
+    }
+
     setTop( t, h ) {
 
         this.content.style.top = t + 'px';
@@ -228,12 +268,15 @@ export class Gui {
 
     }
 
+    
+
     setMouse ( uv, flip = true ) {
 
         if(flip) this.mouse.set( Math.round( uv.x * this.canvas.width ), this.canvas.height - Math.round( uv.y * this.canvas.height ) );
         else this.mouse.set( Math.round( uv.x * this.canvas.width ), Math.round( uv.y * this.canvas.height ) );
         //this.mouse.set( m.x, m.y );
 
+        //console.log("setMouse "+uv.x+" "+uv.y)
     }
 
     setConfig ( o ) {
@@ -377,6 +420,8 @@ export class Gui {
 
         //if( this.cleanning ) return
 
+        //console.log("Gui.handleEvent")
+        //console.log(e);
     	let type = e.type;
 
     	let change = false;
