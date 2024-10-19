@@ -28,6 +28,7 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
     let ui
 
     let params={
+        applyJSON:false,
         currentModel:"cloud03.glb",
         currentCamera:"drone",
         speed:0.34,
@@ -39,13 +40,16 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
         particleSize:2.5,
         particleDOFSizeMultiplier:2,
         particleDOFOpacityDecay:0.3,
-        gamma:1.1
-
+        gamma:1.1,
+        bloom:1.5,
+        linear:10,
+        easein:10,
+        easeout:10,
     }
 
-    window.params=params
+    window.params=params;   
 
-    window.params = params;
+    
     function initGUI () {
 
         // terrain
@@ -57,21 +61,20 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
         
         gCloud.add(params,"currentModel",{type:"list","displayName":"Model",list:["cloud1.glb","cloud2.glb","cloud3.glb"]})
         
-        
-        gCloud.add("button",{name:"",value:["Prev","Load","Next"],callback:(name)=>{console.log(name)}})
+        gCloud.add("button",{name:"",value:["Load Model"],callback:(name)=>{console.log(name)}})
+        gCloud.add("button",{name:"",value:["Load Prev Model","Load Next Model"],callback:(name)=>{console.log(name)}})
         gCloud.add(params,"totalParticles",{type:"list",displayName:"total particles",list:["250K","500K","1M","2M"]})
         gCloud.open();
         
 
         let gJson=ui.add("group",{name:"JSON Editor",bg:"#666644"})
-        gJson.add("button",{name:"",value:["Reset","Export"],callback:(name)=>{console.log(name)}})
-        gJson.add("button",{name:"UI initial state",value:["Test"],callback:(name)=>{console.log(name)}})
-        gJson.add("button",{name:"Cameras",value:["Test orbital","Test Drone"],callback:(name)=>{console.log(name)}})
+        gJson.add(params,"applyJSON",{"displayName":"apply JSON settings",callback:(name)=>{console.log(name)}})        
+        gJson.add("button",{name:"Load cam initial state",value:["Orbital","Drone"],callback:(name)=>{console.log(name)}})
         gJson.open();
 
         let gCam=ui.add("group",{name:"Camera",bg:"#664444"})
         gCam.add(params,"currentCamera",{"type":"list",list:["orbital","drone"]})
-        gCam.add(params,"fov",{displayName:"FOV",min:0,max:90,step:0.01})
+        let o1=gCam.add(params,"fov",{displayName:"FOV",min:0,max:90,step:0.01})
         gCam.add(params,"focalDistance",{type:"slide",displayName:"focal distance",min:0,max:9000,step:0.01})
         gCam.add(params,"focalRange",{type:"slide",displayName:"focal range",min:0,max:9000,step:0.01})
         gCam.open();
@@ -89,7 +92,7 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
         gRender.add(params,"hdrHigh",{type:"slide",displayName:"HDR high",min:0,max:1,step:0.01})
         gRender.add(params,"hdrLow",{type:"slide",displayName:"HDR low",min:0,max:1,step:0.01})
         gRender.add(params,"brightness",{type:"slide",displayName:"brightness",min:0,max:1,step:0.01})
-        gRender.add(params,"bloom",{type:"slide",displayName:"bloom",min:0,max:1,step:0.01})
+        gRender.add(params,"bloom",{type:"slide",displayName:"bloom",min:0,max:10,step:0.01}).listen();
         gRender.open();
 
         //ui.add("button", { name: "setOrbitalCam", values: ["save", "load"] });        
@@ -105,7 +108,15 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
         //ui.add('list', { name: 'includeEvery', list: ['1', '2', '4', '8'], listOnly: false })
         //ui.add("slide", { name: "minSize", min: 1, max: 50, step: 1,value:14 });
 
+        // test item removal
+        gCam.remove(o1)
+        o1=gCam.add(params,"fov",{displayName:"FOV",min:20,max:30,step:0.1})
 
+        let gTest=ui.add("group",{name:"Test"})
+        gTest.open();
+        gTest.add(params,"linear",{type:"slide",displayName:"linear",min:0,max:20,easing:1,precision:4}).listen();
+        gTest.add(params,"easein",{type:"slide",displayName:"easein",min:0,max:20,easing:5,precision:4}).listen();
+        gTest.add(params,"easeout",{type:"slide",displayName:"easeout",min:0,max:20,easing:0.2,precision:4}).listen();
     }
 
     initGUI();

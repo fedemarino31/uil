@@ -31,6 +31,12 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
     import { Water } from './three/extend/Water.js';
     
 
+    let globalObject={
+        param1:0,
+        muteSwitch:false
+    }
+    window.globalObject=globalObject;
+
     let cw = 128*5, ch=148;
     let screen = null;
     let screen2 = null;
@@ -338,6 +344,10 @@ body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b8
         ui.add('list', { name: 'defaultLOD', list: ['250K', '500K', '1M', '2M'], listOnly: false })        
         ui.add('list', { name: 'includeEvery', list: ['1', '2', '4', '8'], listOnly: false })
         ui.add("slide", { name: "minSize", min: 1, max: 50, step: 1,value:14 });
+        ui.add(globalObject, 'param1', { type:'slide', min:0, max:100 } ).listen();
+
+        let g1 = ui.add('group', { name: 'Mute controls' });
+        g1.add(globalObject, 'boolean', { type: 'bool', displayName: "muteSwitch" }).listen();
 
         /*
 

@@ -1,894 +1,832 @@
-
 /**
  * @author lth / https://github.com/lo-th
  */
 
-export const REVISION = '4.3.0';
+export const REVISION = "4.3.0";
 
 // INTENAL FUNCTION
 
 const R = {
+  ui: [],
+
+  dom: null,
+
+  ID: null,
+  lock: false,
+  wlock: false,
+  current: -1,
+
+  needReZone: true,
+  needResize: false,
+  forceZone: false,
+  isEventsInit: false,
+  isLeave: false,
+  addDOMEventListeners: true,
+
+  downTime: 0,
+  prevTime: 0,
+
+  //prevDefault: ['contextmenu', 'wheel'],
+  prevDefault: ["contextmenu"],
+  pointerEvent: ["pointerdown", "pointermove", "pointerup"],
+  eventOut: ["pointercancel", "pointerout", "pointerleave"],
+
+  xmlserializer: null,
+  tmpTime: null,
+  tmpImage: null,
+
+  oldCursor: "auto",
+
+  input: null,
+  parent: null,
+  firstImput: true,
+
+  hiddenImput: null,
+  hiddenSizer: null,
+  hasFocus: false,
+  startInput: false,
+  inputRange: [0, 0],
+  cursorId: 0,
+  str: "",
+  pos: 0,
+  startX: -1,
+  moveX: -1,
+
+  debugInput: false,
+
+  isLoop: false,
+  listens: [],
+
+  e: {
+    type: null,
+    clientX: 0,
+    clientY: 0,
+    keyCode: NaN,
+    key: null,
+    delta: 0,
+  },
+
+  isMobile: false,
+
+  now: null,
+  needsUpdate: false,
+
+  getTime: function () {
+    return self.performance && self.performance.now
+      ? self.performance.now.bind(performance)
+      : Date.now;
+  },
+
+  add: function (o) {
+    // R.ui[0] is de GUI object that is added first by the constructor
+    R.ui.push(o);
+    R.getZone(o);
+
+    if (!R.isEventsInit) R.initEvents();
+  },
+
+  testMobile: function () {
+    let n = navigator.userAgent;
+    if (
+      n.match(/Android/i) ||
+      n.match(/webOS/i) ||
+      n.match(/iPhone/i) ||
+      n.match(/iPad/i) ||
+      n.match(/iPod/i) ||
+      n.match(/BlackBerry/i) ||
+      n.match(/Windows Phone/i)
+    )
+      return true;
+    else return false;
+  },
+
+  remove: function (o) {
+    let i = R.ui.indexOf(o);
+
+    if (i !== -1) {
+      R.removeListen(o);
+      R.ui.splice(i, 1);
+    }
+
+    if (R.ui.length === 0) {
+      R.removeEvents();
+    }
+  },
+
+  // ----------------------
+  //   EVENTS
+  // ----------------------
 
-	ui: [],
+  initEvents: function () {
+    if (R.isEventsInit) return;
 
-    dom:null,
+    let dom = document.body;
 
-	ID: null,
-    lock:false,
-    wlock:false,
-    current:-1,
+    R.isMobile = R.testMobile();
+    R.now = R.getTime();
 
-	needReZone: true,
-    needResize:false,
-    forceZone:false,
-    isEventsInit: false,
-    isLeave:false,
-    addDOMEventListeners:true,
+    if (!R.isMobile) {
+      dom.addEventListener("wheel", R, { passive: false });
+    } else {
+      dom.style.touchAction = "none";
+    }
 
-    downTime:0,
-    prevTime:0,
+    console.log("R.addDOMEventListeners " + R.addDOMEventListeners);
+    if (R.addDOMEventListeners) {
+      dom.addEventListener("pointercancel", R);
+      dom.addEventListener("pointerleave", R);
+      //dom.addEventListener( 'pointerout', R )
 
-    //prevDefault: ['contextmenu', 'wheel'],
-    prevDefault: ['contextmenu'],
-    pointerEvent: ['pointerdown', 'pointermove', 'pointerup'],
-    eventOut: ['pointercancel', 'pointerout', 'pointerleave'],
+      dom.addEventListener("pointermove", R);
+      dom.addEventListener("pointerdown", R);
+      dom.addEventListener("pointerup", R);
 
-	xmlserializer: null,
-	tmpTime: null,
-    tmpImage: null,
+      dom.addEventListener("keydown", R, false);
+      dom.addEventListener("keyup", R, false);
+    }
+    window.addEventListener("resize", R.resize, false);
 
-    oldCursor:'auto',
+    //window.onblur = R.out;
+    //window.onfocus = R.in;
 
-    input: null,
-    parent: null,
-    firstImput: true,
-    
-    hiddenImput:null,
-    hiddenSizer:null,
-    hasFocus:false,
-    startInput:false,
-    inputRange : [0,0],
-    cursorId : 0,
-    str:'',
-    pos:0,
-    startX:-1,
-    moveX:-1,
+    R.isEventsInit = true;
+    R.dom = dom;
+  },
 
-    debugInput:false,
+  removeEvents: function () {
+    if (!R.isEventsInit) return;
 
-    isLoop: false,
-    listens: [],
+    let dom = document.body;
 
-    e:{
-        type:null,
-        clientX:0,
-        clientY:0,
-        keyCode:NaN,
-        key:null,
-        delta:0,
-    },
+    if (!R.isMobile) {
+      dom.removeEventListener("wheel", R);
+    }
 
-    isMobile: false,
+    if (R.addDOMEventListeners) {
+      dom.removeEventListener("pointercancel", R);
+      dom.removeEventListener("pointerleave", R);
+      //dom.removeEventListener( 'pointerout', R );
 
-    now: null,
+      dom.removeEventListener("pointermove", R);
+      dom.removeEventListener("pointerdown", R);
+      dom.removeEventListener("pointerup", R);
 
-    getTime: function() {
-        return ( self.performance && self.performance.now ) ? self.performance.now.bind( performance ) : Date.now;
-    },
+      dom.removeEventListener("keydown", R);
+      dom.removeEventListener("keyup", R);
+    }
+    window.removeEventListener("resize", R.resize);
 
-	add: function ( o ) {
+    R.isEventsInit = false;
+  },
 
-        R.ui.push( o );
-        R.getZone( o );
+  resize: function () {
+    let i = R.ui.length,
+      u;
 
-        if( !R.isEventsInit ) R.initEvents();
+    while (i--) {
+      u = R.ui[i];
+      if (u.isGui && !u.isCanvasOnly && u.autoResize) u.calc();
+    }
 
-    },
+    R.needReZone = true;
+    R.needResize = false;
+  },
 
-    testMobile: function () {
+  out: function () {
+    console.log("im am out");
+    R.clearOldID();
+  },
 
-        let n = navigator.userAgent;
-        if (n.match(/Android/i) || n.match(/webOS/i) || n.match(/iPhone/i) || n.match(/iPad/i) || n.match(/iPod/i) || n.match(/BlackBerry/i) || n.match(/Windows Phone/i)) return true;
-        else return false;  
+  in: function () {
+    console.log("im am in");
+    //  R.clearOldID();
+  },
 
-    },
+  // ----------------------
+  //   HANDLE EVENTS
+  // ----------------------
 
-    remove: function ( o ) {
+  fakeUp: function () {
+    this.handleEvent({ type: "pointerup" });
+  },
 
-        let i = R.ui.indexOf( o );
-        
-        if ( i !== -1 ) {
-            R.removeListen( o );
-            R.ui.splice( i, 1 ); 
-        }
+  handleEvent: function (event) {
+    //console.log("Roots.handleEvent "+event.type)
+    //if(!event.type) return;
 
-        if( R.ui.length === 0 ){
-            R.removeEvents();
-        }
+    if (R.prevDefault.indexOf(event.type) !== -1) event.preventDefault();
 
-    },
+    if (R.needResize) R.resize();
 
-    // ----------------------
-    //   EVENTS
-    // ----------------------
+    R.findZone(R.forceZone);
 
-    initEvents: function () {
+    let e = R.e;
+    let leave = false;
 
-        if( R.isEventsInit ) return;
+    if (event.type === "keydown") R.keydown(event);
+    if (event.type === "keyup") R.keyup(event);
 
-        let dom = document.body;
+    if (event.type === "wheel") e.delta = event.deltaY > 0 ? 1 : -1;
+    else e.delta = 0;
 
-        R.isMobile = R.testMobile()
-        R.now = R.getTime()
+    let ptype = event.pointerType; // mouse, pen, touch
 
+    e.clientX = (ptype === "touch" ? event.pageX : event.clientX) || 0;
+    e.clientY = (ptype === "touch" ? event.pageY : event.clientY) || 0;
 
-        if(!R.isMobile){
-            dom.addEventListener( 'wheel', R, { passive: false } )
-        } else {
-            dom.style.touchAction = 'none'
-        }
+    e.type = event.type;
 
-        
-        console.log("R.addDOMEventListeners "+R.addDOMEventListeners)
-        if (R.addDOMEventListeners){
-            dom.addEventListener( 'pointercancel', R )
-            dom.addEventListener( 'pointerleave', R )
-            //dom.addEventListener( 'pointerout', R )
+    if (R.eventOut.indexOf(event.type) !== -1) {
+      leave = true;
+      e.type = "mouseup";
+    }
 
-            dom.addEventListener( 'pointermove', R )
-            dom.addEventListener( 'pointerdown', R )
-            dom.addEventListener( 'pointerup', R )
-        
+    if (event.type === "pointerleave") R.isLeave = true;
 
-            dom.addEventListener( 'keydown', R, false )
-            dom.addEventListener( 'keyup', R, false )
-        }
-        window.addEventListener( 'resize', R.resize , false )
+    if (event.type === "pointerdown") e.type = "mousedown";
+    if (event.type === "pointerup") e.type = "mouseup";
+    if (event.type === "pointermove") {
+      if (R.isLeave) {
+        // if user resize outside this document
+        R.isLeave = false;
+        R.resize();
+      }
+      e.type = "mousemove";
+    }
 
-        //window.onblur = R.out;
-        //window.onfocus = R.in;
+    // double click test
+    if (e.type === "mousedown") {
+      R.downTime = R.now();
+      let time = R.downTime - R.prevTime;
 
+      // double click on imput
+      if (time < 200) {
+        R.selectAll();
+        return false;
+      }
 
-        R.isEventsInit = true;
-        R.dom = dom
+      R.prevTime = R.downTime;
+      R.forceZone = false;
+    }
 
-    },
+    // for imput
+    if (e.type === "mousedown") R.clearInput();
 
-    removeEvents: function () {
+    // mouse lock
+    if (e.type === "mousedown") R.lock = true;
+    if (e.type === "mouseup") R.lock = false;
 
-        if( !R.isEventsInit ) return;
+    //if( R.current !== null && R.current.neverlock ) R.lock = false;
 
-        let dom = document.body;
-            
-        if(!R.isMobile){
-            dom.removeEventListener( 'wheel', R )
-        }
-        
-        if (R.addDOMEventListeners){
-            dom.removeEventListener( 'pointercancel', R );
-            dom.removeEventListener( 'pointerleave', R );
-            //dom.removeEventListener( 'pointerout', R );
-
-            dom.removeEventListener( 'pointermove', R );
-            dom.removeEventListener( 'pointerdown', R );
-            dom.removeEventListener( 'pointerup', R );
-            
-
-            dom.removeEventListener( 'keydown', R );
-            dom.removeEventListener( 'keyup', R );
-        }
-        window.removeEventListener( 'resize', R.resize  );
-
-        R.isEventsInit = false;
-
-    },
-
-    resize: function () {
-
-        let i = R.ui.length, u;
-        
-        while( i-- ){
-
-            u = R.ui[i]
-            if( u.isGui && !u.isCanvasOnly && u.autoResize ) u.calc()
-        
-        }
-
-        R.needReZone = true
-        R.needResize = false
-
-    },
-
-    out: function () {
-
-        console.log('im am out')
-        R.clearOldID();
-
-    },
-
-    in: function () {
-
-        console.log('im am in')
-      //  R.clearOldID();
-
-    },
-
-    // ----------------------
-    //   HANDLE EVENTS
-    // ----------------------
-
-    fakeUp: function(){
-
-        this.handleEvent( {type:'pointerup'} )
-
-    },
-    
-
-    handleEvent: function ( event ) {
-
-        //console.log("Roots.handleEvent "+event.type)
-        //if(!event.type) return;
-        
-        if( R.prevDefault.indexOf( event.type ) !== -1 ) event.preventDefault(); 
-
-        if( R.needResize ) R.resize()
-
-        R.findZone(R.forceZone)
-       
-        let e = R.e
-        let leave = false
-        
-        if( event.type === 'keydown') R.keydown( event );
-        if( event.type === 'keyup') R.keyup( event );
-
-        if( event.type === 'wheel' ) e.delta = event.deltaY > 0 ? 1 : -1;
-        else e.delta = 0;
-
-        let ptype = event.pointerType // mouse, pen, touch
-
-        e.clientX = ( ptype === 'touch' ? event.pageX : event.clientX ) || 0
-        e.clientY = ( ptype === 'touch' ? event.pageY : event.clientY ) || 0
-
-        e.type = event.type
-
-        if( R.eventOut.indexOf( event.type ) !== -1 ){ 
-            leave = true
-            e.type = 'mouseup'
-        }
-
-        if( event.type === 'pointerleave') R.isLeave = true 
-
-        if( event.type === 'pointerdown') e.type = 'mousedown'
-        if( event.type === 'pointerup') e.type = 'mouseup'
-        if( event.type === 'pointermove'){ 
-            if( R.isLeave ){ 
-                // if user resize outside this document
-                R.isLeave = false
-                R.resize()
-            }
-            e.type = 'mousemove';
-        }
-        
-        // double click test
-        if( e.type === 'mousedown' ) {
-            R.downTime = R.now()
-            let time = R.downTime - R.prevTime
-
-            // double click on imput
-            if( time < 200 ) { R.selectAll(); return false }
-   
-            R.prevTime = R.downTime
-            R.forceZone = false
-        }
-
-        // for imput
-        if( e.type === 'mousedown' ) R.clearInput()
-
-        // mouse lock
-        if( e.type === 'mousedown' ) R.lock = true;
-        if( e.type === 'mouseup' ) R.lock = false;
-        
-        //if( R.current !== null && R.current.neverlock ) R.lock = false;
-
-        /*if( e.type === 'mousedown' && event.button === 1){
+    /*if( e.type === 'mousedown' && event.button === 1){
             R.cursor()
             e.preventDefault();
             e.stopPropagation();
         }*/
 
-        //console.log("p4 "+R.isMobile+" "+e.type+" "+R.lock)
+    //console.log("p4 "+R.isMobile+" "+e.type+" "+R.lock)
 
-        if( R.isMobile && e.type === 'mousedown' ) R.findID( e );
-        if( e.type === 'mousemove' && !R.lock ) R.findID( e );
-        
-        if( R.ID !== null ){
+    if (R.isMobile && e.type === "mousedown") R.findID(e);
+    if (e.type === "mousemove" && !R.lock) R.findID(e);
 
-            
-            if( R.ID.isCanvasOnly ) {
+    if (R.ID !== null) {
+      if (R.ID.isCanvasOnly) {
+        e.clientX = R.ID.mouse.x;
+        e.clientY = R.ID.mouse.y;
+      }
 
-                e.clientX = R.ID.mouse.x;
-                e.clientY = R.ID.mouse.y;
+      //if( R.ID.marginDiv ) e.clientY -= R.ID.margin * 0.5
 
-            }
+      R.ID.handleEvent(e);
+    }
 
-            //if( R.ID.marginDiv ) e.clientY -= R.ID.margin * 0.5
-            
-            R.ID.handleEvent( e );
+    if (R.isMobile && e.type === "mouseup") R.clearOldID();
+    if (leave) R.clearOldID();
+  },
 
+  // ----------------------
+  //   ID
+  // ----------------------
+
+  findID: function (e) {
+    let i = R.ui.length,
+      next = -1,
+      u,
+      x,
+      y;
+
+    while (i--) {
+      u = R.ui[i];
+
+      if (u.isCanvasOnly) {
+        x = u.mouse.x;
+        y = u.mouse.y;
+      } else {
+        x = e.clientX;
+        y = e.clientY;
+      }
+
+      if (R.onZone(u, x, y)) {
+        next = i;
+
+        if (next !== R.current) {
+          R.clearOldID();
+          R.current = next;
+          R.ID = u;
         }
-        
-        if( R.isMobile && e.type === 'mouseup' ) R.clearOldID();
-        if( leave ) R.clearOldID();
+        break;
+      }
+    }
 
+    if (next === -1) R.clearOldID();
+  },
 
-    },
+  clearOldID: function () {
+    if (!R.ID) return;
+    R.current = -1;
+    R.ID.reset();
+    R.ID = null;
+    R.cursor();
+  },
 
-    // ----------------------
-    //   ID
-    // ----------------------
+  // ----------------------
+  //   GUI / GROUP FUNCTION
+  // ----------------------
 
-    findID: function ( e ) {
-        
-        let i = R.ui.length, next = -1, u, x, y;
+  calcUis: (uis, zone, py, group = false) => {
+    //console.log('calc_uis')
 
-        while( i-- ){
+    let i = uis.length,
+      u,
+      px = 0,
+      n = 0,
+      tw,
+      m,
+      div;
 
-            u = R.ui[i]
+    let height = 0;
 
-            if( u.isCanvasOnly ) {
+    while (i--) {
+      u = uis[n];
+      n++;
 
-                x = u.mouse.x;
-                y = u.mouse.y;
+      if (!group && u.isGroup) u.calcUis();
 
-            } else {
+      m = u.margin;
+      //div = u.marginDiv
 
-                x = e.clientX;
-                y = e.clientY;
+      u.zone.w = u.w;
+      u.zone.h = u.h + m;
 
-            }
+      if (!u.autoWidth) {
+        if (px === 0) height += u.h + m;
 
-            if( R.onZone( u, x, y ) ){ 
-                
-                next = i;
-                
-                if( next !== R.current ){
-                    R.clearOldID();
-                    R.current = next;
-                    R.ID = u;
-                }
-                break;
-            }
-                
+        u.zone.x = zone.x + px;
+        u.zone.y = py; // + u.mtop
+        //if(div) u.zone.y += m * 0.5
+
+        tw = R.getWidth(u);
+        if (tw) u.zone.w = u.w = tw;
+        else if (u.fw) u.zone.w = u.w = u.fw;
+
+        px += u.zone.w;
+
+        if (px >= zone.w) {
+          py += u.h + m;
+          //if(div) py += m * 0.5
+          px = 0;
         }
+      } else {
+        px = 0;
 
-        if( next === -1 ) R.clearOldID();
-        
-    },
+        u.zone.x = zone.x + u.dx;
+        u.zone.y = py;
+        py += u.h + m;
 
-    clearOldID: function () {
+        height += u.h + m;
+      }
+    }
 
-        if( !R.ID ) return;
-        R.current = -1;
-        R.ID.reset();
-        R.ID = null;
-        R.cursor();
+    return height;
+  },
 
-    },
+  findTarget: function (uis, e) {
+    let i = uis.length;
 
-    // ----------------------
-    //   GUI / GROUP FUNCTION
-    // ----------------------
+    while (i--) {
+      if (R.onZone(uis[i], e.clientX, e.clientY)) return i;
+    }
 
-    calcUis: ( uis, zone, py, group = false ) => {
+    return -1;
+  },
 
-        //console.log('calc_uis')
+  // ----------------------
+  //   ZONE
+  // ----------------------
 
-        let i = uis.length, u, px = 0, n = 0, tw, m, div;
+  findZone: function (force) {
+    if (!R.needReZone && !force) return;
 
-        let height = 0
+    var i = R.ui.length,
+      u;
 
-        while( i-- ){
+    while (i--) {
+      u = R.ui[i];
+      R.getZone(u);
+      if (u.isGui) u.calcUis();
+    }
 
-            u = uis[n]
-            n++
+    R.needReZone = false;
+  },
 
-            if( !group && u.isGroup ) u.calcUis()
+  onZone: function (o, x, y) {
+    if (x === undefined || y === undefined) return false;
 
-            m = u.margin
-            //div = u.marginDiv
+    let z = o.zone;
+    let mx = x - z.x; // - o.dx;
+    let my = y - z.y;
 
-            u.zone.w = u.w
-            u.zone.h = u.h + m
-            
-            if( !u.autoWidth ){
+    //if( this.marginDiv ) e.clientY -= this.margin * 0.5
+    //if( o.group && o.group.marginDiv ) my += o.group.margin * 0.5
+    //if( o.group !== null ) mx -= o.dx
 
-                if( px === 0 ) height += u.h + m
+    let over = mx >= 0 && my >= 0 && mx <= z.w && my <= z.h;
 
-                u.zone.x = zone.x + px
-                u.zone.y = py// + u.mtop
-                //if(div) u.zone.y += m * 0.5
+    //if( o.marginDiv ) my -= o.margin * 0.5
 
-                tw = R.getWidth(u)
-                if( tw ) u.zone.w = u.w = tw
-                else if( u.fw ) u.zone.w = u.w = u.fw
-                
-                px += u.zone.w
+    if (over) o.local.set(mx, my);
+    else o.local.neg();
 
-                if( px >= zone.w ) { 
-                    py += u.h + m
-                    //if(div) py += m * 0.5
-                    px = 0
-                }
+    return over;
+  },
 
-            } else {
+  getWidth: function (o) {
+    //return o.getDom().offsetWidth
+    return o.getDom().clientWidth;
 
-                px = 0
+    //let r = o.getDom().getBoundingClientRect();
+    //return (r.width)
+    //return Math.floor(r.width)
+  },
 
-                u.zone.x = zone.x+u.dx
-                u.zone.y = py
-                py += u.h + m
+  getZone: function (o) {
+    if (o.isCanvasOnly) return;
+    let r = o.getDom().getBoundingClientRect();
 
-                height += u.h + m
+    //if( !r.width ) return
+    //o.zone = { x:Math.floor(r.left), y:Math.floor(r.top), w:Math.floor(r.width), h:Math.floor(r.height) };
+    //o.zone = { x:Math.round(r.left), y:Math.round(r.top), w:Math.round(r.width), h:Math.round(r.height) };
+    o.zone = { x: r.left, y: r.top, w: r.width, h: r.height };
 
-            }
+    //console.log(o.name, o.zone)
+  },
 
+  // ----------------------
+  //   CURSOR
+  // ----------------------
+
+  cursor: function (name) {
+    name = name ? name : "auto";
+    if (name !== R.oldCursor) {
+      document.body.style.cursor = name;
+      R.oldCursor = name;
+    }
+  },
+
+  // ----------------------
+  //   CANVAS
+  // ----------------------
+
+  toCanvas: function (o, w, h, force) {
+    if (!R.xmlserializer) R.xmlserializer = new XMLSerializer();
+
+    // prevent exesive redraw
+
+    if (force && R.tmpTime !== null) {
+      clearTimeout(R.tmpTime);
+      R.tmpTime = null;
+    }
+
+    if (R.tmpTime !== null) return;
+
+    if (R.lock)
+      R.tmpTime = setTimeout(function () {
+        R.tmpTime = null;
+      }, 10);
+
+    ///
+
+    let isNewSize = false;
+    if (w !== o.canvas.width || h !== o.canvas.height) isNewSize = true;
+
+    if (R.tmpImage === null) R.tmpImage = new Image();
+
+    let img = R.tmpImage; //new Image();
+
+    let htmlString = R.xmlserializer.serializeToString(o.content);
+
+    let svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+      w +
+      '" height="' +
+      h +
+      '"><foreignObject style="pointer-events: none; left:0;" width="100%" height="100%">' +
+      htmlString +
+      "</foreignObject></svg>";
+
+    img.onload = function () {
+      let ctx = o.canvas.getContext("2d");
+
+      if (isNewSize) {
+        o.canvas.width = w;
+        o.canvas.height = h;
+      } else {
+        ctx.clearRect(0, 0, w, h);
+      }
+      ctx.drawImage(this, 0, 0);
+
+      o.onDraw();
+    };
+
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    //img.src = 'data:image/svg+xml;base64,'+ window.btoa( svg );
+    img.crossOrigin = "";
+    R.needsUpdate = false;
+  },
+
+  // ----------------------
+  //   INPUT
+  // ----------------------
+
+  setHidden: function () {
+    if (R.hiddenImput === null) {
+      //let css = R.parent.css.txtselect + 'padding:0; width:auto; height:auto; '
+      //let css = R.parent.css.txt + 'padding:0; width:auto; height:auto; text-shadow:none;'
+      //css += 'left:10px; top:auto; border:none; color:#FFF; background:#000;' + hide;
+
+      R.hiddenImput = document.createElement("input");
+      R.hiddenImput.type = "text";
+      //R.hiddenImput.style.cssText = css + 'bottom:30px;' + (R.debugInput ? '' : 'transform:scale(0);');
+
+      R.hiddenSizer = document.createElement("div");
+      //R.hiddenSizer.style.cssText = css + 'bottom:60px;';
+
+      document.body.appendChild(R.hiddenImput);
+      document.body.appendChild(R.hiddenSizer);
+    }
+
+    let hide = R.debugInput ? "" : "opacity:0; zIndex:0;";
+    let css =
+      R.parent.css.txtselect +
+      "padding:0; width:auto; height:auto; left:10px; top:auto; color:#FFF; background:#000;" +
+      hide;
+    R.hiddenImput.style.cssText =
+      css + "bottom:10px;" + (R.debugInput ? "" : "transform:scale(0);");
+    R.hiddenSizer.style.cssText = css + "bottom:40px;";
+
+    R.hiddenImput.style.width = R.input.clientWidth + "px";
+    R.hiddenImput.value = R.str;
+    R.hiddenSizer.innerHTML = R.str;
+
+    R.hasFocus = true;
+  },
+
+  clearHidden: function (p) {
+    if (R.hiddenImput === null) return;
+    R.hasFocus = false;
+  },
+
+  clickPos: function (x) {
+    let i = R.str.length,
+      l = 0,
+      n = 0;
+    while (i--) {
+      l += R.textWidth(R.str[n]);
+      if (l >= x) break;
+      n++;
+    }
+    return n;
+  },
+
+  upInput: function (x, down) {
+    if (R.parent === null) return false;
+
+    let up = false;
+
+    if (down) {
+      let id = R.clickPos(x);
+
+      R.moveX = id;
+
+      if (R.startX === -1) {
+        R.startX = id;
+        R.cursorId = id;
+        R.inputRange = [R.startX, R.startX];
+      } else {
+        let isSelection = R.moveX !== R.startX;
+
+        if (isSelection) {
+          if (R.startX > R.moveX) R.inputRange = [R.moveX, R.startX];
+          else R.inputRange = [R.startX, R.moveX];
         }
-
-        return height
-
-    },
-
-
-	findTarget: function ( uis, e ) {
-
-        let i = uis.length;
-
-        while( i-- ){
-            if( R.onZone( uis[i], e.clientX, e.clientY ) ) return i
-        }
-
-        return -1;
-
-    },
-
-    // ----------------------
-    //   ZONE
-    // ----------------------
-
-    findZone: function ( force ) {
-
-        if( !R.needReZone && !force ) return;
-
-        var i = R.ui.length, u;
-
-        while( i-- ){ 
-
-            u = R.ui[i]
-            R.getZone( u )
-            if( u.isGui ) u.calcUis()
-
-        }
-
-        R.needReZone = false
-
-
-    },
-
-    onZone: function ( o, x, y ) {
-
-        if( x === undefined || y === undefined ) return false;
-
-        let z = o.zone;
-        let mx = x - z.x;// - o.dx;
-        let my = y - z.y;
-
-        //if( this.marginDiv ) e.clientY -= this.margin * 0.5
-        //if( o.group && o.group.marginDiv ) my += o.group.margin * 0.5
-        //if( o.group !== null ) mx -= o.dx
-
-        let over = ( mx >= 0 ) && ( my >= 0 ) && ( mx <= z.w ) && ( my <= z.h );
-
-        //if( o.marginDiv ) my -= o.margin * 0.5
-
-        if( over ) o.local.set( mx, my );
-        else o.local.neg();
-
-        return over;
-
-    },
-
-    getWidth: function ( o ) {
-
-
-
-        //return o.getDom().offsetWidth
-        return o.getDom().clientWidth
-
-        //let r = o.getDom().getBoundingClientRect();
-        //return (r.width)
-        //return Math.floor(r.width)
-
-    },
-
-    getZone: function ( o ) {
-
-        if( o.isCanvasOnly ) return;
-        let r = o.getDom().getBoundingClientRect();
-
-        //if( !r.width ) return
-        //o.zone = { x:Math.floor(r.left), y:Math.floor(r.top), w:Math.floor(r.width), h:Math.floor(r.height) };
-        //o.zone = { x:Math.round(r.left), y:Math.round(r.top), w:Math.round(r.width), h:Math.round(r.height) };
-        o.zone = { x:r.left, y:r.top, w:r.width, h:r.height };
-
-        //console.log(o.name, o.zone)
-
-    },
-
-    // ----------------------
-    //   CURSOR
-    // ----------------------
-
-    cursor: function ( name ) {
-
-        name = name ? name : 'auto';
-        if( name !== R.oldCursor ){
-            document.body.style.cursor = name;
-            R.oldCursor = name;
-        }
-
-    },
-
-    // ----------------------
-    //   CANVAS
-    // ----------------------
-
-    toCanvas: function ( o, w, h, force ) {
-
-        if( !R.xmlserializer ) R.xmlserializer = new XMLSerializer()
-
-        // prevent exesive redraw
-
-        if( force && R.tmpTime !== null ) { clearTimeout(R.tmpTime); R.tmpTime = null;  }
-
-        if( R.tmpTime !== null ) return;
-
-        if( R.lock ) R.tmpTime = setTimeout( function(){ R.tmpTime = null; }, 10 );
-
-        ///
-
-        let isNewSize = false;
-        if( w !== o.canvas.width || h !== o.canvas.height ) isNewSize = true;
-
-        if( R.tmpImage === null ) R.tmpImage = new Image();
-
-        let img = R.tmpImage; //new Image();
-
-        let htmlString = R.xmlserializer.serializeToString( o.content );
-        
-        let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'"><foreignObject style="pointer-events: none; left:0;" width="100%" height="100%">'+ htmlString +'</foreignObject></svg>';
-
-        img.onload = function() {
-
-            let ctx = o.canvas.getContext("2d");
-
-            if( isNewSize ){ 
-                o.canvas.width = w;
-                o.canvas.height = h
-            }else{
-                ctx.clearRect( 0, 0, w, h );
-            }
-            ctx.drawImage( this, 0, 0 );
-
-            o.onDraw();
-
-        };
-
-        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-        //img.src = 'data:image/svg+xml;base64,'+ window.btoa( svg );
-        img.crossOrigin = '';
-
-
-    },
-
-    // ----------------------
-    //   INPUT
-    // ----------------------
-
-    setHidden: function () {
-
-
-        if( R.hiddenImput === null ){
-
-            //let css = R.parent.css.txtselect + 'padding:0; width:auto; height:auto; '
-            //let css = R.parent.css.txt + 'padding:0; width:auto; height:auto; text-shadow:none;'
-            //css += 'left:10px; top:auto; border:none; color:#FFF; background:#000;' + hide;
-
-            R.hiddenImput = document.createElement('input');
-            R.hiddenImput.type = 'text';
-            //R.hiddenImput.style.cssText = css + 'bottom:30px;' + (R.debugInput ? '' : 'transform:scale(0);');
-
-            R.hiddenSizer = document.createElement('div');
-            //R.hiddenSizer.style.cssText = css + 'bottom:60px;';
-            
-            document.body.appendChild( R.hiddenImput );
-            document.body.appendChild( R.hiddenSizer );
-
-        }
-
-        let hide = R.debugInput ? '' : 'opacity:0; zIndex:0;';
-        let css = R.parent.css.txtselect + 'padding:0; width:auto; height:auto; left:10px; top:auto; color:#FFF; background:#000;'+ hide;
-        R.hiddenImput.style.cssText = css + 'bottom:10px;' + (R.debugInput ? '' : 'transform:scale(0);');
-        R.hiddenSizer.style.cssText = css + 'bottom:40px;';
-
-        R.hiddenImput.style.width = R.input.clientWidth + 'px';
-        R.hiddenImput.value = R.str;
-        R.hiddenSizer.innerHTML = R.str;
-
-        R.hasFocus = true;
-
-    },
-
-    clearHidden: function ( p ) {
-
-        if( R.hiddenImput === null ) return;
-        R.hasFocus = false;
-
-    },
-
-    clickPos: function( x ){
-
-        let i = R.str.length, l = 0, n = 0;
-        while( i-- ){
-            l += R.textWidth( R.str[n] );
-            if( l >= x ) break;
-            n++;
-        }
-        return n;
-
-    },
-
-    upInput: function ( x, down ) {
-
-        if( R.parent === null ) return false;
-
-        let up = false;
-     
-        if( down ){
-
-            let id = R.clickPos( x );
-
-            R.moveX = id;
-
-            if( R.startX === -1 ){ 
-
-                R.startX = id;
-                R.cursorId = id;
-                R.inputRange = [ R.startX, R.startX ];
-
-            } else {
-            
-                let isSelection = R.moveX !== R.startX;
-
-                if( isSelection ){
-                    if( R.startX > R.moveX ) R.inputRange = [ R.moveX, R.startX ];
-                    else R.inputRange = [ R.startX, R.moveX ];    
-                }
-            }
-
-            up = true;
-            
-        } else {
-
-            if( R.startX !== -1 ){
-
-                R.hasFocus = true;
-                R.hiddenImput.focus();
-                R.hiddenImput.selectionStart = R.inputRange[0];
-                R.hiddenImput.selectionEnd = R.inputRange[1];
-                R.startX = -1;
-
-                up = true;
-
-            }
-
-        }
-
-        if( up ) R.selectParent();
-
-        return up;
-
-    },
-
-    selectAll: function (){
-
-        if(!R.parent) return
-
-        R.str = R.input.textContent;
-        R.inputRange = [0, R.str.length ]
+      }
+
+      up = true;
+    } else {
+      if (R.startX !== -1) {
         R.hasFocus = true;
         R.hiddenImput.focus();
         R.hiddenImput.selectionStart = R.inputRange[0];
         R.hiddenImput.selectionEnd = R.inputRange[1];
-        R.cursorId = R.inputRange[1]
-        R.selectParent()
+        R.startX = -1;
 
-    },
+        up = true;
+      }
+    }
 
-    selectParent: function (){
+    if (up) R.selectParent();
 
-        var c = R.textWidth( R.str.substring( 0, R.cursorId ));
-        var e = R.textWidth( R.str.substring( 0, R.inputRange[0] ));
-        var s = R.textWidth( R.str.substring( R.inputRange[0],  R.inputRange[1] ));
+    return up;
+  },
 
-        R.parent.select( c, e, s, R.hiddenSizer.innerHTML );
+  selectAll: function () {
+    if (!R.parent) return;
 
-    },
+    R.str = R.input.textContent;
+    R.inputRange = [0, R.str.length];
+    R.hasFocus = true;
+    R.hiddenImput.focus();
+    R.hiddenImput.selectionStart = R.inputRange[0];
+    R.hiddenImput.selectionEnd = R.inputRange[1];
+    R.cursorId = R.inputRange[1];
+    R.selectParent();
+  },
 
-    textWidth: function ( text ){
+  selectParent: function () {
+    var c = R.textWidth(R.str.substring(0, R.cursorId));
+    var e = R.textWidth(R.str.substring(0, R.inputRange[0]));
+    var s = R.textWidth(R.str.substring(R.inputRange[0], R.inputRange[1]));
 
-        if( R.hiddenSizer === null ) return 0;
-        text = text.replace(/ /g, '&nbsp;');
-        R.hiddenSizer.innerHTML = text;
-        return R.hiddenSizer.clientWidth;
+    R.parent.select(c, e, s, R.hiddenSizer.innerHTML);
+  },
 
-    },
+  textWidth: function (text) {
+    if (R.hiddenSizer === null) return 0;
+    text = text.replace(/ /g, "&nbsp;");
+    R.hiddenSizer.innerHTML = text;
+    return R.hiddenSizer.clientWidth;
+  },
 
+  clearInput: function () {
+    if (R.parent === null) return;
+    if (!R.firstImput) R.parent.validate(true);
 
-    clearInput: function () {
+    R.clearHidden();
+    R.parent.unselect();
 
-        if( R.parent === null ) return;
-        if( !R.firstImput ) R.parent.validate( true );
+    //R.input.style.background = 'none';
+    R.input.style.background = R.parent.colors.back;
+    R.input.style.borderColor = R.parent.colors.border;
+    //R.input.style.color = R.parent.colors.text;
+    R.parent.isEdit = false;
 
-        R.clearHidden();
-        R.parent.unselect();
+    R.input = null;
+    R.parent = null;
+    (R.str = ""), (R.firstImput = true);
+  },
 
-        //R.input.style.background = 'none';
-        R.input.style.background = R.parent.colors.back;
-        R.input.style.borderColor = R.parent.colors.border;
-        //R.input.style.color = R.parent.colors.text;
-        R.parent.isEdit = false;
+  setInput: function (Input, parent) {
+    R.clearInput();
 
-        R.input = null;
-        R.parent = null;
-        R.str = '',
-        R.firstImput = true;
+    R.input = Input;
+    R.parent = parent;
 
-    },
+    R.input.style.background = R.parent.colors.backoff;
+    R.input.style.borderColor = R.parent.colors.select;
+    //R.input.style.color = R.parent.colors.textSelect;
+    R.str = R.input.textContent;
 
-    setInput: function ( Input, parent ) {
+    R.setHidden();
+  },
 
-        R.clearInput();
-        
-        R.input = Input;
-        R.parent = parent;
+  keydown: function (e) {
+    if (R.parent === null) return;
 
-        R.input.style.background = R.parent.colors.backoff;
-        R.input.style.borderColor = R.parent.colors.select;
-        //R.input.style.color = R.parent.colors.textSelect;
-        R.str = R.input.textContent;
+    let keyCode = e.which,
+      isShift = e.shiftKey;
 
-        R.setHidden();
+    //console.log( keyCode )
 
-    },
+    R.firstImput = false;
 
-    keydown: function ( e ) {
+    if (R.hasFocus) {
+      // hack to fix touch event bug in iOS Safari
+      window.focus();
+      R.hiddenImput.focus();
+    }
 
-        if( R.parent === null ) return;
+    R.parent.isEdit = true;
 
-        let keyCode = e.which, isShift = e.shiftKey;
+    // e.preventDefault();
 
-        //console.log( keyCode )
+    // add support for Ctrl/Cmd+A selection
+    //if ( keyCode === 65 && (e.ctrlKey || e.metaKey )) {
+    //R.selectText();
+    //e.preventDefault();
+    //return self.render();
+    //}
 
-        R.firstImput = false;
+    if (keyCode === 13) {
+      //enter
 
+      R.clearInput();
 
-        if (R.hasFocus) {
-            // hack to fix touch event bug in iOS Safari
-            window.focus();
-            R.hiddenImput.focus();
+      //} else if( keyCode === 9 ){ //tab key
 
-        }
-
-
-        R.parent.isEdit = true;
-
-       // e.preventDefault();
-
-        // add support for Ctrl/Cmd+A selection
-        //if ( keyCode === 65 && (e.ctrlKey || e.metaKey )) {
-            //R.selectText();
-            //e.preventDefault();
-            //return self.render();
-        //}
-
-        if( keyCode === 13 ){ //enter
-
-            R.clearInput();
-
-        //} else if( keyCode === 9 ){ //tab key
-
-           // R.input.textContent = '';
-
+      // R.input.textContent = '';
+    } else {
+      if (R.input.isNum) {
+        if (
+          (e.keyCode > 47 && e.keyCode < 58) ||
+          (e.keyCode > 95 && e.keyCode < 106) ||
+          e.keyCode === 190 ||
+          e.keyCode === 110 ||
+          e.keyCode === 8 ||
+          e.keyCode === 109
+        ) {
+          R.hiddenImput.readOnly = false;
         } else {
-
-            if( R.input.isNum ){
-                if ( ((e.keyCode > 47) && (e.keyCode < 58)) || ((e.keyCode > 95) && (e.keyCode < 106)) || e.keyCode === 190 || e.keyCode === 110 || e.keyCode === 8 || e.keyCode === 109 ){
-                    R.hiddenImput.readOnly = false;
-                } else {
-                    R.hiddenImput.readOnly = true;
-                }
-            } else {
-                R.hiddenImput.readOnly = false;
-            }
-
+          R.hiddenImput.readOnly = true;
         }
+      } else {
+        R.hiddenImput.readOnly = false;
+      }
+    }
+  },
 
-    },
+  keyup: function (e) {
+    if (R.parent === null) return;
 
-    keyup: function ( e ) {
+    R.str = R.hiddenImput.value;
 
-        if( R.parent === null ) return;
+    if (R.parent.allEqual) R.parent.sameStr(R.str); // numeric samùe value
+    else R.input.textContent = R.str;
 
-        R.str = R.hiddenImput.value;
+    R.cursorId = R.hiddenImput.selectionStart;
+    R.inputRange = [R.hiddenImput.selectionStart, R.hiddenImput.selectionEnd];
 
-        if( R.parent.allEqual ) R.parent.sameStr( R.str );// numeric samùe value
-        else R.input.textContent = R.str;
+    R.selectParent();
 
-        R.cursorId = R.hiddenImput.selectionStart;
-        R.inputRange = [ R.hiddenImput.selectionStart, R.hiddenImput.selectionEnd ];
+    //if( R.parent.allway )
+    R.parent.validate();
+  },
 
-        R.selectParent();
+  // ----------------------
+  //
+  //   LISTENING
+  //
+  // ----------------------
 
-        //if( R.parent.allway ) 
-        R.parent.validate();
+  loop: function () {
+    // modified by Fedemarino
+    if (R.isLoop) requestAnimationFrame(R.loop);
+    R.needsUpdate = R.update();
+    // if there is a change in a value generated externally, the GUI needs to be redrawn
+    if (R.ui[0]) R.ui[0].draw();
+  },
 
-    },
+  update: function () {
+    // modified by Fedemarino
+    let i = R.listens.length;
+    let needsUpdate = false;
+    while (i--) {
+      //check if the value of the object has changed
+      let hasChanged = R.listens[i].listening();
+      if (hasChanged) needsUpdate = true;
+    }
+    return needsUpdate;
+  },
 
-    // ----------------------
-    //
-    //   LISTENING
-    //
-    // ----------------------
+  removeListen: function (proto) {
+    let id = R.listens.indexOf(proto);
+    if (id !== -1) R.listens.splice(id, 1);
+    if (R.listens.length === 0) R.isLoop = false;
+  },
 
-    loop: function () {
+  addListen: function (proto) {
+    let id = R.listens.indexOf(proto);
 
-        if( R.isLoop ) requestAnimationFrame( R.loop );
-        R.update();
+    if (id !== -1) return false;
 
-    },
+    R.listens.push(proto);
 
-    update: function () {
+    if (!R.isLoop) {
+      R.isLoop = true;
+      R.loop();
+    }
 
-        let i = R.listens.length;
-        while( i-- ) R.listens[i].listening();
-
-    },
-
-    removeListen: function ( proto ) {
-
-        let id = R.listens.indexOf( proto );
-        if( id !== -1 ) R.listens.splice(id, 1);
-        if( R.listens.length === 0 ) R.isLoop = false;
-
-    },
-
-    addListen: function ( proto ) {
-
-        let id = R.listens.indexOf( proto );
-
-        if( id !== -1 ) return false; 
-
-        R.listens.push( proto );
-
-        if( !R.isLoop ){
-            R.isLoop = true;
-            R.loop();
-        }
-
-        return true;
-
-    },
-
-}
+    return true;
+  },
+};
 
 export const Roots = R;
