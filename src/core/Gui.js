@@ -62,6 +62,7 @@ export class Gui {
     // local mouse and zone
     this.local = new V2().neg();
     this.zone = { x: 0, y: 0, w: this.size.w, h: 0 };
+    this.offset = 0;
 
     // virtual mouse
     this.mouse = new V2().neg();
@@ -723,7 +724,7 @@ export class Gui {
     y = Tools.clamp(y, 0, this.range);
 
     this.decal = Math.floor(y / this.ratio);
-    this.inner.style.top = (this.zone.y - this.decal) + "px";
+    this.inner.style.top = (this.offset - this.decal) + "px";
     this.scroll.style.top = Math.floor(y) + "px";
     this.oy = y;
   }
@@ -731,8 +732,8 @@ export class Gui {
   addTab(tab) {
     if (this.tabs.length === 0) {
       this.tabBar.style.display = 'flex';
-      this.zone.y = this.tabBarHeight;
-      this.scrollBG.style.top = this.zone.y + 'px';
+      this.offset = this.tabBarHeight;
+      this.scrollBG.style.top = this.offset + 'px';
     }
 
     const cc = this.colors;
@@ -790,7 +791,7 @@ export class Gui {
   // ----------------------
 
   calcUis() {
-    return Roots.calcUis(this.uis, this.zone, this.zone.y);
+    return Roots.calcUis(this.uis, this.zone, this.zone.y + this.offset);
   }
 
   calc() {
@@ -801,25 +802,25 @@ export class Gui {
   setHeight() {
     if (this.tmp) clearTimeout(this.tmp);
 
-    this.zone.h = this.bh;
+    this.zone.h = this.offset + this.bh;
     this.isScroll = false;
 
     if (this.isOpen) {
       this.h = this.calcUis();
 
       let hhh = this.forceHeight
-        ? this.forceHeight + this.zone.y
+        ? this.forceHeight + this.zone.y + this.offset
         : window.innerHeight;
 
-      this.maxHeight = hhh - this.zone.y - this.bh;
+      this.maxHeight = hhh - this.zone.y - this.offset - this.bh;
 
       let diff = this.h - this.maxHeight;
 
       if (diff > 1) {
         this.isScroll = true;
-        this.zone.h = this.maxHeight + this.bh;
+        this.zone.h = this.offset + this.maxHeight + this.bh;
       } else {
-        this.zone.h = this.h + this.bh;
+        this.zone.h = this.offset + this.h + this.bh;
       }
     }
 
