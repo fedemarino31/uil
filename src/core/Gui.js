@@ -62,6 +62,7 @@ export class Gui {
     // local mouse and zone
     this.local = new V2().neg();
     this.zone = { x: 0, y: 0, w: this.size.w, h: 0 };
+    this.offset = 0;
 
     // virtual mouse
     this.mouse = new V2().neg();
@@ -100,6 +101,10 @@ export class Gui {
 
     let cc = this.colors;
 
+    this.tabs = [];
+    this.currentTab = -1;
+    this.tabBarHeight = this.size.h;
+
     this.content = Tools.dom(
       "div",
       this.css.basic +
@@ -114,8 +119,18 @@ export class Gui {
       this.css.basic +
         "width:100%; top:0; left:0; height:auto; overflow:hidden;"
     );
-    //this.innerContent = Tools.dom( 'div', this.css.basic + this.css.button + 'width:100%; top:0; left:0; height:auto; overflow:hidden;');
     this.content.appendChild(this.innerContent);
+
+    this.tabBar = Tools.dom(
+      "div",
+      this.css.basic +
+        "left:0; top:0; width:100%; height:" +
+        this.tabBarHeight +
+        "px; background:" +
+        cc.background +
+        "; display:none; pointer-events:auto; display:flex;"
+    );
+    this.innerContent.appendChild(this.tabBar);
 
     //this.inner = Tools.dom( 'div', this.css.basic + 'width:100%; left:0; ')
     this.useFlex = true;
@@ -709,9 +724,66 @@ export class Gui {
     y = Tools.clamp(y, 0, this.range);
 
     this.decal = Math.floor(y / this.ratio);
-    this.inner.style.top = -this.decal + "px";
+    this.inner.style.top = (this.offset - this.decal) + "px";
     this.scroll.style.top = Math.floor(y) + "px";
     this.oy = y;
+  }
+
+  addTab(tab) {
+    if (this.tabs.length === 0) {
+      this.tabBar.style.display = 'flex';
+      this.offset = this.tabBarHeight;
+      this.scrollBG.style.top = this.offset + 'px';
+    }
+
+    const cc = this.colors;
+    const b = Tools.dom(
+      'div',
+      this.css.basic +
+        this.css.button +
+        'position:relative; padding:0 8px; height:' +
+        this.tabBarHeight +
+        'px; line-height:' +
+        (this.tabBarHeight - 2) +
+        'px; background:' +
+        cc.button +
+        '; color:' +
+        cc.text +
+        '; border:' +
+        cc.borderSize +
+        'px solid ' +
+        cc.border +
+        '; border-radius:' +
+        cc.radius +
+        'px; cursor:pointer; pointer-events:auto;'
+    );
+    b.textContent = tab.txt;
+    this.tabBar.appendChild(b);
+    tab.button = b;
+    tab.hide();
+
+    b.addEventListener('click', () => {
+      this.selectTab(tab);
+    });
+
+    this.tabs.push(tab);
+    if (this.tabs.length === 1) this.selectTab(tab);
+  }
+
+  selectTab(tab) {
+    const cc = this.colors;
+    this.tabs.forEach(t => {
+      if (t === tab) {
+        t.show();
+        t.button.style.background = cc.select;
+        t.button.style.color = cc.textSelect;
+      } else {
+        t.hide();
+        t.button.style.background = cc.button;
+        t.button.style.color = cc.text;
+      }
+    });
+    this.calc();
   }
 
   // ----------------------
@@ -719,7 +791,7 @@ export class Gui {
   // ----------------------
 
   calcUis() {
-    return Roots.calcUis(this.uis, this.zone, this.zone.y);
+    return Roots.calcUis(this.uis, this.zone, this.zone.y + this.offset);
   }
 
   calc() {
@@ -730,25 +802,25 @@ export class Gui {
   setHeight() {
     if (this.tmp) clearTimeout(this.tmp);
 
-    this.zone.h = this.bh;
+    this.zone.h = this.offset + this.bh;
     this.isScroll = false;
 
     if (this.isOpen) {
       this.h = this.calcUis();
 
       let hhh = this.forceHeight
-        ? this.forceHeight + this.zone.y
+        ? this.forceHeight + this.zone.y + this.offset
         : window.innerHeight;
 
-      this.maxHeight = hhh - this.zone.y - this.bh;
+      this.maxHeight = hhh - this.zone.y - this.offset - this.bh;
 
       let diff = this.h - this.maxHeight;
 
       if (diff > 1) {
         this.isScroll = true;
-        this.zone.h = this.maxHeight + this.bh;
+        this.zone.h = this.offset + this.maxHeight + this.bh;
       } else {
-        this.zone.h = this.h + this.bh;
+        this.zone.h = this.offset + this.h + this.bh;
       }
     }
 

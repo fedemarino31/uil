@@ -21,6 +21,7 @@ import { Item } from '../proto/Item.js';
 import { Grid } from '../proto/Grid.js';
 import { Pad2D } from '../proto/Pad2D.js';
 import { Roots } from './Roots.js';
+import { Tab } from '../proto/Tab.js';
 
 export const add = function () {
 
@@ -51,7 +52,7 @@ export const add = function () {
 
         let name = type.toLowerCase();
 
-        if( name === 'group' ){ 
+        if( name === 'group' || name === 'tab' ){
             o.add = add;
             //o.dx = 8
         }
@@ -65,6 +66,7 @@ export const add = function () {
             case 'fps': n = new Fps(o); break;
             case 'graph': n = new Graph(o); break;
             case 'group': n = new Group(o); break;
+            case 'tab': n = new Tab(o); break;
             case 'joystick': n = new Joystick(o); break;
             case 'knob': n = new Knob(o); break;
             case 'list': n = new List(o); break;
