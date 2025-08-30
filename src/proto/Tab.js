@@ -25,7 +25,6 @@ export class Tab extends Group {
         s[2].top = '0px';
         s[0].height = '0px';
         s[1].height = '0px';
-        s[2].height = '0px';
         s[1].border = 'none';
         s[2].border = 'none';
 

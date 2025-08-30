@@ -6444,7 +6444,6 @@
 			this.zone.h = 0;
 		}
 	const add = function () {
-		let a = arguments;
 		let type,
 			o,
 			ref = false,
