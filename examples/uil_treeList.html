@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Uil TreeList Example</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link rel="shortcut icon" href="./assets/favicon.ico">
+    </head>
+<style>
+html{ overflow:hidden; width:100%; height:100%; }
+body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b84; font-size:11px; color:#fff; margin: 0px; }
+</style>
+</head>
+<body>
+<div id='content'></div>
+<script type="module">
+    import * as UIL from '../build/uil.module.js';
+
+    let ui;
+
+    const sampleTree = {
+        fruits: {
+            citrus: ['orange','lemon'],
+            berries: ['strawberry','blueberry']
+        },
+        vegetables: {
+            root: ['carrot','beet'],
+            leaf: ['lettuce','spinach']
+        }
+    };
+
+    function initGUI(){
+        ui = new UIL.Gui({ w:300, isCanvas:false });
+        ui.add('treeList', {
+            name:'Tree',
+            tree: sampleTree,
+            value:['fruits','citrus'],
+            onChange:(tab,item,path)=>{ console.log('selected path', path); }
+        });
+    }
+
+    initGUI();
+</script>
+</body>
+</html>
