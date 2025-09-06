@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>UIL – Tabs demo</title>
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"/>
+    <style>
+      html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#2f3340; }
+      body { font-family: Consolas, monospace; color:#fff; font-size:11px; }
+      #log { white-space: pre; margin:10px; }
+    </style>
+  </head>
+  <body>
+    <div id="log"></div>
+
+    <script type="module">
+      // Import igual que en uil_lumicles: el bundle expone Gui y add
+      import * as UIL from '../build/uil.module.js'; // { Gui, add, Tools, Files, REVISION }
+      // Requiere que hayas añadido el tipo 'tab' en add.js y el proto Tabs.js
+      // (el bundle ya reexporta Gui/add desde Uil.js)  :contentReference[oaicite:5]{index=5} :contentReference[oaicite:6]{index=6}
+
+      // -----------------------------
+      // Estado externo de prueba
+      // -----------------------------
+      const state = {
+        volume: 0.5,
+        quality: 'High',
+        enabled: true,
+        color: '#ff9933',
+        treePath: ['Animales', 'Aves'],
+      };
+
+      // -----------------------------
+      // UI
+      // -----------------------------
+      const ui = new UIL.Gui({
+        w: 320,
+        open: true,
+        addDOMEventListeners: true, // como en tus ejemplos  :contentReference[oaicite:7]{index=7}
+      });
+
+      // TAB 1
+      const tab1 = ui.add('tab', { displayName: 'Tab 1' });
+      tab1.add('title', { name: 'Controles básicos' });
+
+      tab1.add(state, 'enabled', { type:'bool', name:'Enabled' }).listen();
+      tab1.add(state, 'volume',  { type:'slide', name:'Volume', min:0, max:1, step:0.01 }).listen();
+      tab1.add(state, 'quality', { type:'list',  name:'Quality', list:['Low','Medium','High'] }).listen();
+      tab1.add(state, 'color',   { type:'color', name:'Color' }).listen();
+      tab1.add('button', { name:'Log state', callback: () => log(JSON.stringify(state, null, 2)) });
+
+      // TAB 2
+      const tab2 = ui.add('tab', { displayName: 'Tab 2' });
+      tab2.add('title', { name: 'TreeList + referencia' });
+
+      // Árbol de ejemplo para TreeList
+      const tree = {
+        Animales: { Aves: ['Gorrión', 'Águila', 'Colibrí'], Mamíferos: ['Perro', 'Gato', 'Delfín', 'Elefante'] },
+        Vehículos: ['Auto', 'Bicicleta', 'Avión', 'Barco'],
+        Colores: { Cálidos: ['Rojo', 'Naranja', 'Amarillo'], Fríos: ['Azul', 'Verde', 'Violeta'], Neutros: ['Blanco', 'Negro', 'Gris'] }
+      };
+
+      const treelist = tab2.add(state, 'treePath', {
+        type: 'treelist',
+        name: 'Ruta',
+        tree,
+        // podés setear focus inicial si querés
+        focused: false,
+        onChange: (tabIndex, itemIndex, newPath) => {
+          log(`Tab2.onChange -> ${JSON.stringify(newPath)}`);
+        }
+      }).listen(); // sincroniza cuando state.treePath cambie desde afuera
+
+      tab2.add('button', {
+        name:'Cambiar desde afuera',
+        callback: () => {
+          // Cambia el estado externo y el control lo refleja por .listen()
+          state.treePath = ['Colores','Fríos'];
+          log('state.treePath = ["Colores","Fríos"]');
+        }
+      });
+
+      // TAB 3
+      const tab3 = ui.add('tab', { displayName: 'Tab 3' });
+      tab3.add('title', { name: 'Más controles' });
+
+      tab3.add('numeric', { name:'Rate', value:60, min:1, max:240, step:1 });
+      tab3.add('pad2d',   { name:'Pad', w:300, h:120 });
+      tab3.add('button',  { name:'Ir a Tab 1', callback: () => {
+        // API de Tabs: si expusiste setActiveByLabel en tu Tabs.js, podés llamarla así:
+        // ui._tabsBar.setActiveByLabel('Tab 1');  // si guardaste la barra como this._tabsBar en add.js
+        // Para el test, simulamos re-creación de estado, etc.
+        log('Volver a Tab 1 (si expusiste setActiveByLabel, úsalo aquí).');
+      }});
+
+      // -----------------------------
+      // Utils
+      // -----------------------------
+      function log(txt){ document.getElementById('log').textContent = txt; }
+
+      // Estilo opcional por código (usa Tools/colors si querés tunear)
+      // UIL.Tools.setStyle({ select:'#308AFF' });  :contentReference[oaicite:8]{index=8}
+    </script>
+  </body>
+</html>

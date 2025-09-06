@@ -2,6 +2,7 @@
 import { Roots } from '../core/Roots.js';
 import { Proto } from '../core/Proto.js';
 import { Empty } from './Empty.js';
+import { add as ADD_FACTORY } from '../core/add.js';
 
 export class Group extends Proto {
 
@@ -11,7 +12,8 @@ export class Group extends Proto {
 
         this.isGroup = true
 
-        this.ADD = o.add;
+        // Factory para crear controles desde dentro del Group
+        this.ADD = o.add || ADD_FACTORY;
 
         this.autoHeight = true
 
@@ -44,7 +46,8 @@ export class Group extends Proto {
         this.c[4] = this.dom( 'div', this.css.basic + 'width:100%; left:0; height:'+(bh+1)+'px; top:'+((this.h-1))+'px; background:none;')
 
         let s = this.s;
-        this.c[1].name = 'group'
+        // En modo simple:true (usado por tabs) Proto no crea c[1]
+        if (this.c[1]) this.c[1].name = 'group';
 
         this.init();
 
@@ -77,11 +80,11 @@ export class Group extends Proto {
             cc.background = 'none'
 
         s[0].background = 'none';
-        s[1].background = cc.groups
+        if (s[1]) s[1].background = cc.groups
         s[2].background = cc.groups
 
-        if( cc.gborder !== 'none' ){
-            s[1].border = cc.borderSize+'px solid '+ cc.gborder
+        if( s[1] && cc.gborder !== 'none' ){
+            s[1].border = cc.borderSize + 'px solid ' + cc.gborder
         }
 
         if( this.radius !== 0 ){
@@ -230,7 +233,11 @@ export class Group extends Proto {
             }
         }
 
-        let u = this.ADD.apply( this, a )
+        //let u = this.ADD.apply( this, a )
+
+        // Fallback por si no vino seteado
+       if (!this.ADD) this.ADD = ADD_FACTORY;
+       let u = this.ADD.apply( this, a )
 
         if( u.isGroup ){ 
             //o.add = add;
@@ -446,9 +453,10 @@ export class Group extends Proto {
 
         s[3].left = ( this.sa + this.sb - 6 ) + 'px'
 
-        s[1].width = this.w + 'px'
+        if (this.s[1]) s[1].width = this.w + 'px'
         s[2].width = this.w + 'px'
-        s[1].left = (this.decal) + 'px'
+        
+        if (this.s[1])  s[1].left = (this.decal) + 'px'
         s[2].left = (this.decal) + 'px'
 
         if( this.isOpen ) this.rSizeContent()

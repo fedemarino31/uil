@@ -22,7 +22,7 @@ import { Grid } from '../proto/Grid.js';
 import { Pad2D } from '../proto/Pad2D.js';
 import { Roots } from './Roots.js';
 import { TreeList } from '../proto/TreeList.js';
-import { Tabs } from './proto/Tabs.js';
+import { Tabs } from '../proto/Tabs.js';
 
 export const add = function () {
 
@@ -82,18 +82,49 @@ export const add = function () {
             case 'grid': n = new Grid(o); break;
             case 'pad2d': case 'pad': n = new Pad2D(o); break;
             case 'treelist': n = new TreeList(o); break;
-            case 'tab': 
-                // asegurar TabBar en la primera fila
-                if (!this._tabsBar) {
-                    this._tabsBar = new Tabs({ name:'', ontop:true, isUI:true, main:this });
-                    // lo agrega al array this.uis en primer lugar por ontop=true (Gui.add)
+            case 'tab': {
+                // Host donde anclar tabs: si se llama desde gui.add(), host = this (Gui)
+                // si se llamara desde dentro de un Group, subimos a this.main (Gui)
+                const host = this.isGui ? this : this.main;
+
+                // 1) Crear (o reutilizar) una sola barra de tabs en la PRIMERA FILA
+                if (!host._tabsBar) {
+                    const to = {
+                        name: '',
+                        ontop: true,    // rinde al comienzo
+                        isUI: true,
+                        main: host
+                    };
+                    const bar = new Tabs(to);
+                    host._tabsBar = bar;
+                    // aseguro que forme parte del layout del gui (primero)
+                    if (Array.isArray(host.uis)) host.uis.unshift(bar);
                 }
-                // crear el contenedor de la pestaña (Group)
-                o.isTabContent = true;
-                const label = o.displayName || o.name || `Tab ${this._tabsBar.items.length+1}`;
-                n = new Group(o);                 // reusa Group para el contenido
-                this._tabsBar.registerTab(label, n); // asocia con un botón en la barra
-                break;            
+
+                // 2) Crear el contenedor (Group) de la pestaña, SIN cabecera
+                const label = o.displayName || o.name || `Tab ${host._tabsBar.items.length + 1}`;
+                const go = {
+                    ...o,
+                    type: 'group',
+                    name: label,
+                    simple: true,        // Proto no crea columna de título (header)  :contentReference[oaicite:5]{index=5}
+                    open: true,
+                    isTabContent: true,
+                    add: add,            // factory para que group.add(...) funcione  :contentReference[oaicite:6]{index=6}
+                    isUI: true,
+                    target: host.inner,
+                    main: host
+                };
+                const grp = new Group(go);
+
+                // 3) Registrar en barra y colapsar/expandir según activo
+                host._tabsBar.registerTab(label, grp);
+
+                // 4) Asegurar que participe del layout del gui
+                if (Array.isArray(host.uis)) host.uis.push(grp);
+
+                n = grp;
+            } break;
 
         }
 
