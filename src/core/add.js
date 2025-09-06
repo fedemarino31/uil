@@ -22,6 +22,7 @@ import { Grid } from '../proto/Grid.js';
 import { Pad2D } from '../proto/Pad2D.js';
 import { Roots } from './Roots.js';
 import { TreeList } from '../proto/TreeList.js';
+import { Tabs } from './proto/Tabs.js';
 
 export const add = function () {
 
@@ -81,6 +82,18 @@ export const add = function () {
             case 'grid': n = new Grid(o); break;
             case 'pad2d': case 'pad': n = new Pad2D(o); break;
             case 'treelist': n = new TreeList(o); break;
+            case 'tab': 
+                // asegurar TabBar en la primera fila
+                if (!this._tabsBar) {
+                    this._tabsBar = new Tabs({ name:'', ontop:true, isUI:true, main:this });
+                    // lo agrega al array this.uis en primer lugar por ontop=true (Gui.add)
+                }
+                // crear el contenedor de la pestaña (Group)
+                o.isTabContent = true;
+                const label = o.displayName || o.name || `Tab ${this._tabsBar.items.length+1}`;
+                n = new Group(o);                 // reusa Group para el contenido
+                this._tabsBar.registerTab(label, n); // asocia con un botón en la barra
+                break;            
 
         }
 

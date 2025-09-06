@@ -52,6 +52,19 @@ export class Group extends Proto {
 
         if( o.open ) this.open()
 
+        // dentro del constructor de Group(o)
+        this.isTabContent = !!o.isTabContent;
+
+        // si el Group se usa como contenido de Tab:
+        // - no muestres cabecera
+        // - no permitas plegar/desplegar
+        if (this.isTabContent) {
+            this.simple = true;        // fuerza layout sin título (ya soportado por Proto)
+            this.open();               // queda siempre abierto
+            this.toggleEnabled = false; // si tenés lógica de toggle, neutralizala
+        }
+
+
     }
 
     setBG ( bg ) {
@@ -441,6 +454,33 @@ export class Group extends Proto {
         if( this.isOpen ) this.rSizeContent()
 
     }
+
+    // guarda/restaura snapshot de layout para Tabs
+    getLayoutSnapshot() {
+        return { h: this.h, margin: this.margin };
+    }
+
+    restoreLayoutSnapshot(snap) {
+        if (!snap) return;
+        this.h = snap.h;
+        this.margin = snap.margin;
+        if (this.s && this.s[0]) this.s[0].height = this.h + 'px';
+    }
+
+    // llamados por Tabs
+    collapseForTabs() {
+        // ocultar DOM del group (usa Proto.display)
+        if (this.display) this.display(false);   // Proto.display() ya existe
+        if (!this._tabs_saved) this._tabs_saved = this.getLayoutSnapshot();
+        this.h = 0;
+        this.margin = 0;
+    }
+
+    expandForTabs() {
+        this.restoreLayoutSnapshot(this._tabs_saved);
+        if (this.display) this.display(true);
+    }
+
 
     //
 /*
