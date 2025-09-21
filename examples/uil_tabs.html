@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>UIL Tabs Example</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link rel="shortcut icon" href="./assets/favicon.ico">
+    </head>
+<style>
+html{ overflow:hidden; width:100%; height:100%; }
+body { font-family: "Lucida Console", Monaco, monospace; background-color:#282f35; font-size:11px; color:#fff; margin: 0px; }
+
+</style>
+
+</head>
+
+<body>
+
+<div id='content'></div>
+
+<script type="module">
+
+
+    import * as UIL from '../build/uil.module.js';
+
+    let ui;
+
+    const params = {
+        masterVolume:0.7,
+        musicVolume:0.5,
+        effectsVolume:0.6,
+        musicMute:false,
+        themeColor:'#ff8844',
+        accentColor:'#44aaff',
+        bloom:1.2,
+        exposure:0.85,
+        toneMapping:'ACES',
+        resolution:'1440p',
+        fpsLimit:120,
+        networkMode:'Online',
+        region:'EU',
+        maxPlayers:8,
+        latencyWarning:80,
+        voiceChat:true
+    };
+
+    function initGUI () {
+
+        ui = new UIL.Gui({ w:320, isCanvas:false, addDOMEventListeners:true });
+
+        const audioTab = ui.add('tab', { name:'Audio', bg:'#446666' });
+        audioTab.add(params, 'masterVolume', { type:'slide', min:0, max:1, step:0.01, displayName:'Master Volume' });
+        audioTab.add(params, 'musicVolume', { type:'slide', min:0, max:1, step:0.01, displayName:'Music Volume' });
+        audioTab.add(params, 'effectsVolume', { type:'slide', min:0, max:1, step:0.01, displayName:'Effects Volume' });
+        audioTab.add(params, 'musicMute', { type:'bool', displayName:'Mute Music' });
+
+        const visualTab = ui.add('tab', { name:'Visuals', bg:'#664466' });
+        visualTab.add(params, 'themeColor', { type:'color', displayName:'Theme Color' });
+        visualTab.add(params, 'accentColor', { type:'color', displayName:'Accent Color' });
+        visualTab.add(params, 'bloom', { type:'slide', min:0, max:2, step:0.01, displayName:'Bloom' });
+        visualTab.add(params, 'exposure', { type:'slide', min:0, max:2, step:0.01, displayName:'Exposure' });
+        visualTab.add(params, 'toneMapping', { type:'list', list:['ACES','Filmic','Neutral'], displayName:'Tone Mapping' });
+        visualTab.add(params, 'resolution', { type:'list', list:['1080p','1440p','4K'], displayName:'Resolution' });
+        visualTab.add(params, 'fpsLimit', { type:'list', list:['60','120','240'], displayName:'FPS Limit' });
+
+        const networkTab = ui.add('tab', { name:'Network', bg:'#666644' });
+        networkTab.add(params, 'networkMode', { type:'list', list:['Offline','Online','LAN'], displayName:'Mode' });
+        networkTab.add(params, 'region', { type:'list', list:['NA','EU','AS','SA'], displayName:'Region' });
+        networkTab.add(params, 'maxPlayers', { type:'numeric', min:1, max:16, step:1, displayName:'Max Players' });
+        networkTab.add(params, 'latencyWarning', { type:'slide', min:0, max:200, step:1, displayName:'Latency Warning (ms)' });
+        networkTab.add(params, 'voiceChat', { type:'bool', displayName:'Voice Chat' });
+
+    }
+
+    initGUI();
+
+
+</script>
+</body>
+</html>

@@ -98,6 +98,11 @@ export class Gui {
 
     this.isNewTarget = false;
 
+    this.tabs = [];
+    this.tabBar = null;
+    this.activeTab = null;
+    this.tabHeight = 0;
+
     let cc = this.colors;
 
     this.content = Tools.dom(
@@ -435,6 +440,104 @@ export class Gui {
   }
 
   // ----------------------
+  //   TABS MANAGEMENT
+  // ----------------------
+
+  registerTab(tab) {
+    if (!tab) return;
+
+    if (!this.tabBar) {
+      const cc = this.colors;
+      this.tabBar = document.createElement('div');
+      this.tabBar.className = 'uil-tab-bar';
+      this.tabBar.style.position = 'absolute';
+      this.tabBar.style.left = '0px';
+      this.tabBar.style.top = '0px';
+      this.tabBar.style.width = '100%';
+      this.tabBar.style.display = 'flex';
+      this.tabBar.style.flexWrap = 'wrap';
+      this.tabBar.style.alignItems = 'flex-end';
+      this.tabBar.style.gap = cc.sx + 'px';
+      this.tabBar.style.padding = cc.sy + 'px ' + cc.sx + 'px';
+      this.tabBar.style.paddingBottom = cc.sy + 'px';
+      this.tabBar.style.boxSizing = 'border-box';
+      this.tabBar.style.background = cc.background;
+      this.tabBar.style.pointerEvents = 'auto';
+      this.tabBar.style.zIndex = 1;
+
+      this.innerContent.insertBefore(this.tabBar, this.inner);
+    }
+
+    if (this.tabs.indexOf(tab) === -1) this.tabs.push(tab);
+
+    if (tab.tabButton && tab.tabButton.parentNode !== this.tabBar) {
+      this.tabBar.appendChild(tab.tabButton);
+    }
+
+    if (!this.activeTab) {
+      this.activateTab(tab);
+    } else {
+      tab.deactivate();
+      this.updateTabLayout();
+    }
+  }
+
+  unregisterTab(tab) {
+    if (!tab) return;
+
+    let id = this.tabs.indexOf(tab);
+    if (id !== -1) this.tabs.splice(id, 1);
+
+    if (this.tabBar && tab.tabButton && tab.tabButton.parentNode === this.tabBar) {
+      this.tabBar.removeChild(tab.tabButton);
+    }
+
+    if (this.activeTab === tab) {
+      this.activeTab = null;
+      if (this.tabs.length) this.activateTab(this.tabs[0]);
+    }
+
+    if (!this.tabs.length) {
+      if (this.tabBar && this.tabBar.parentNode === this.innerContent) {
+        this.innerContent.removeChild(this.tabBar);
+      }
+      this.tabBar = null;
+      this.tabHeight = 0;
+      this.inner.style.top = '0px';
+      this.calc();
+      Roots.forceZone = true;
+      return;
+    }
+
+    this.updateTabLayout();
+  }
+
+  activateTab(tab) {
+    if (!tab) return;
+    if (this.activeTab === tab) return;
+
+    if (this.activeTab) this.activeTab.deactivate();
+
+    this.activeTab = tab;
+    this.activeTab.activate();
+    this.updateTabLayout();
+  }
+
+  updateTabLayout() {
+    if (!this.tabBar) {
+      this.tabHeight = 0;
+      this.inner.style.top = '0px';
+      return;
+    }
+
+    const height = this.tabBar.offsetHeight || 0;
+    this.tabHeight = height;
+    this.inner.style.top = this.tabHeight + 'px';
+    this.calc();
+    Roots.forceZone = true;
+  }
+
+  // ----------------------
   //   TARGET
   // ----------------------
 
@@ -764,7 +867,10 @@ export class Gui {
   // ----------------------
 
   calcUis() {
-    return Roots.calcUis(this.uis, this.zone, this.zone.y);
+    const offset = this.tabHeight || 0;
+    const py = this.zone.y + offset;
+    const h = Roots.calcUis(this.uis, this.zone, py);
+    return h + offset;
   }
 
   calc() {
