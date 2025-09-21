@@ -112,9 +112,12 @@ export class Tab extends Proto {
         const name = this.testZone( e );
         if ( !name ) return;
 
+        const type = e.type;
+
         switch ( name ) {
             case 'content':
-                if ( Roots.isMobile && e.type === 'mousedown' ) this.getNext( e, change );
+                if ( Roots.isMobile && type === 'mousedown' ) this.getNext( e, change );
+                else if ( type === 'mousedown' || type === 'pointerdown' || type === 'touchstart' ) this.getNext( e, change );
                 if ( this.proto ) protoChange = this.proto.handleEvent( e );
                 if ( !Roots.lock ) this.getNext( e, change );
                 break;
