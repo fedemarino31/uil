@@ -37,7 +37,7 @@ export class Tab extends Proto {
 
         this.s[0].overflow = 'hidden';
         this.s[1] = this.c[1].style;
-        this.s[1].pointerEvents = 'none';
+        this.s[1].pointerEvents = 'auto';
         this.s[2].pointerEvents = 'auto';
         this.s[2].display = 'none';
 
