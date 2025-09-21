@@ -6,6 +6,7 @@ import { Color } from '../proto/Color.js';
 import { Fps } from '../proto/Fps.js';
 import { Graph } from '../proto/Graph.js';
 import { Group  } from '../proto/Group.js';
+import { Tab } from '../proto/Tab.js';
 import { Joystick } from '../proto/Joystick.js';
 import { Knob } from '../proto/Knob.js';
 import { List } from '../proto/List.js';
@@ -52,7 +53,7 @@ export const add = function () {
 
         let name = type.toLowerCase();
 
-        if( name === 'group' ){ 
+        if( name === 'group' || name === 'tab' ){
             o.add = add;
             //o.dx = 8
         }
@@ -66,6 +67,7 @@ export const add = function () {
             case 'fps': n = new Fps(o); break;
             case 'graph': n = new Graph(o); break;
             case 'group': n = new Group(o); break;
+            case 'tab': n = new Tab(o); break;
             case 'joystick': n = new Joystick(o); break;
             case 'knob': n = new Knob(o); break;
             case 'list': n = new List(o); break;

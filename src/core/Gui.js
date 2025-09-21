@@ -89,6 +89,10 @@ export class Gui {
     this.isScroll = false;
 
     this.uis = [];
+    this.tabs = [];
+    this.activeTab = null;
+    this.tabBar = null;
+    this.tabContent = null;
     this.current = -1;
     this.proto = null;
     this.isEmpty = true;
@@ -648,7 +652,8 @@ export class Gui {
     let id = this.uis.indexOf(n);
     if (id !== -1) {
       //this.calc( - (this.uis[ id ].h + 1 ) );
-      this.inner.removeChild(this.uis[id].c[0]);
+      const dom = this.uis[id].c[0];
+      if (dom && dom.parentNode) dom.parentNode.removeChild(dom);
       this.uis.splice(id, 1);
       this.calc();
     }
@@ -666,7 +671,8 @@ export class Gui {
 
     while (i--) {
       item = this.uis.pop();
-      this.inner.removeChild(item.c[0]);
+      const dom = item.c[0];
+      if (dom && dom.parentNode) dom.parentNode.removeChild(dom);
       item.dispose();
     }
 
@@ -764,7 +770,8 @@ export class Gui {
   // ----------------------
 
   calcUis() {
-    return Roots.calcUis(this.uis, this.zone, this.zone.y);
+    const offset = this.getTabOffset();
+    return Roots.calcUis(this.uis, this.zone, this.zone.y + offset) + offset;
   }
 
   calc() {
@@ -820,6 +827,105 @@ export class Gui {
     if (this.isCenter)
       this.content.style.marginLeft = -Math.floor(this.zone.w * 0.5) + "px";
     this.setItemWidth(this.zone.w - this.sw);
+  }
+
+  ensureTabContainers() {
+    if (this.tabBar) return;
+
+    const flex =
+      "display:flex; flex-flow: row wrap; gap:" +
+      this.colors.sx +
+      "px;";
+
+    this.tabBar = Tools.dom(
+      "div",
+      this.css.basic + flex + "width:100%; left:0; top:0; pointer-events:none;"
+    );
+    this.tabBar.style.justifyContent = "flex-start";
+    this.tabBar.style.alignItems = "center";
+    this.tabBar.style.marginBottom = this.margin + "px";
+
+    this.tabContent = Tools.dom(
+      "div",
+      this.css.basic + "width:100%; left:0; top:0; pointer-events:none;"
+    );
+    this.tabContent.style.display = "block";
+
+    this.inner.insertBefore(this.tabBar, this.inner.firstChild);
+
+    if (this.tabBar.nextSibling)
+      this.inner.insertBefore(this.tabContent, this.tabBar.nextSibling);
+    else this.inner.appendChild(this.tabContent);
+  }
+
+  removeTabContainers() {
+    if (this.tabBar && this.tabBar.parentNode) {
+      this.tabBar.parentNode.removeChild(this.tabBar);
+    }
+
+    if (this.tabContent && this.tabContent.parentNode) {
+      this.tabContent.parentNode.removeChild(this.tabContent);
+    }
+
+    this.tabBar = null;
+    this.tabContent = null;
+    this.tabs = [];
+    this.activeTab = null;
+  }
+
+  registerTab(tab) {
+    if (this.tabs.indexOf(tab) !== -1) return;
+
+    this.tabs.push(tab);
+
+    if (!this.activeTab) {
+      this.activeTab = tab;
+      tab.setActive(true, true);
+    } else {
+      tab.setActive(false, true);
+    }
+
+    tab.updateButtonState();
+
+    Roots.forceZone = true;
+  }
+
+  unregisterTab(tab) {
+    const id = this.tabs.indexOf(tab);
+    if (id !== -1) this.tabs.splice(id, 1);
+
+    if (this.activeTab === tab) {
+      this.activeTab = null;
+      if (this.tabs.length) this.setActiveTab(this.tabs[0]);
+    }
+
+    if (this.tabs.length === 0) this.removeTabContainers();
+  }
+
+  setActiveTab(tab) {
+    if (!tab || this.activeTab === tab) return;
+    if (this.tabs.indexOf(tab) === -1) return;
+
+    if (this.activeTab) this.activeTab.setActive(false, true);
+
+    this.activeTab = tab;
+    this.activeTab.setActive(true, true);
+
+    Roots.forceZone = true;
+    this.calc();
+  }
+
+  getTabOffset() {
+    if (!this.tabBar) return 0;
+
+    const height = this.tabBar.offsetHeight || 0;
+    let margin = 0;
+
+    if (this.tabBar.style.marginBottom) {
+      margin = parseFloat(this.tabBar.style.marginBottom) || 0;
+    }
+
+    return height + margin;
   }
 
   setItemWidth(w) {

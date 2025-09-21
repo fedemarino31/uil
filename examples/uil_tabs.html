@@ -1,0 +1,88 @@
+<html lang="en">
+    <head>
+        <title>Uil Tabs Demo</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link rel="shortcut icon" href="./assets/favicon.ico">
+    </head>
+<style>
+html{ overflow:hidden; width:100%; height:100%; }
+body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b84; font-size:11px; color:#fff; margin: 0px; }
+
+</style>
+
+</head>
+
+<body>
+
+<div id='content'></div>
+
+<script type="module">
+
+    import * as UIL from '../build/uil.module.js';
+
+    let ui;
+
+    const params = {
+        applyJSON:false,
+        currentModel:"cloud03.glb",
+        currentCamera:"drone",
+        speed:0.34,
+        speedMapped:2.4,
+        fov:45,
+        focalDistance:1500,
+        focalRange:2000,
+        particleOpacity:1.5,
+        particleSize:2.5,
+        particleDOFSizeMultiplier:2,
+        particleDOFOpacityDecay:0.3,
+        gamma:1.1,
+        bloom:1.5,
+        linear:10,
+        easein:10,
+        easeout:10,
+        listen:0.,
+        axis:"x"
+    };
+
+    setInterval( function(){
+        params.listen += 0.1;
+        if( params.listen > 20 ) params.listen = 0;
+    }, 50 );
+
+    function initGUI () {
+
+        ui = new UIL.Gui({ w:128*4, isCanvas:false, addDOMEventListeners:true });
+
+        const tabModel = ui.add('tab', { name:'Modelo', bg:'#446666' });
+        const gModel = tabModel.add('group', { name:'Cloud Model', bg:'#446666' });
+        gModel.add(params, 'currentModel', { type:'list', displayName:'Model', list:['cloud1.glb','cloud2.glb','cloud3.glb'] });
+        gModel.add('button', { name:'', value:['Load Model'], callback:(name)=>{ console.log('Load', name); } });
+        gModel.add('button', { name:'', value:['Prev','Next'], callback:(name)=>{ console.log('Switch', name); } });
+        gModel.add(params, 'applyJSON', { displayName:'apply JSON settings', callback:(state)=>{ console.log('Apply JSON', state); } });
+        gModel.open();
+
+        const tabCamera = ui.add('tab', { name:'Camara', bg:'#664444' });
+        const gCamera = tabCamera.add('group', { name:'Camera', bg:'#664444' });
+        gCamera.add(params, 'currentCamera', { type:'list', list:['orbital','drone'] });
+        gCamera.add(params, 'fov', { displayName:'FOV', min:0, max:90, step:0.01 });
+        gCamera.add(params, 'focalDistance', { type:'slide', displayName:'focal distance', min:0, max:9000, step:0.01 });
+        gCamera.add(params, 'focalRange', { type:'slide', displayName:'focal range', min:0, max:9000, step:0.01 });
+        gCamera.open();
+
+        const tabRender = ui.add('tab', { name:'Render', bg:'#444466' });
+        const gRender = tabRender.add('group', { name:'Rendering', bg:'#444466' });
+        gRender.add(params, 'gamma', { type:'slide', displayName:'gamma', min:0, max:2, step:0.01 });
+        gRender.add(params, 'particleOpacity', { type:'slide', displayName:'opacity', min:0, max:10, step:0.01 });
+        gRender.add(params, 'particleSize', { type:'slide', displayName:'size', min:0, max:10, step:0.01 });
+        gRender.add(params, 'bloom', { type:'slide', displayName:'bloom', min:0, max:10, step:0.01 }).listen();
+        gRender.add(params, 'listen', { type:'slide', displayName:'listen', min:0, max:20, step:0.01 }).listen();
+        gRender.open();
+
+    }
+
+    initGUI();
+
+</script>
+</body>
+</html>
