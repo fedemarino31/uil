@@ -89,12 +89,18 @@ export class Gui {
     this.isScroll = false;
 
     this.uis = [];
+    this.tabs = [];
     this.current = -1;
     this.proto = null;
     this.isEmpty = true;
+    this.activeTab = null;
     this.decal = 0;
     this.ratio = 1;
     this.oy = 0;
+    this.tabBar = null;
+    this.tabBarWrapper = null;
+    this.tabBarHeight = 0;
+    this.innerBase = 0;
 
     this.isNewTarget = false;
 
@@ -597,6 +603,162 @@ export class Gui {
     //Roots.lock = false;
   }
 
+  ensureTabBar() {
+    if (this.tabBarWrapper) return;
+
+    const cc = this.colors;
+
+    this.tabBarWrapper = Tools.dom(
+      "div",
+      this.css.basic +
+        "position:relative; width:100%; left:0; top:0; height:auto; pointer-events:none;"
+    );
+    this.tabBarWrapper.style.display = "none";
+    this.tabBarWrapper.style.margin = "0";
+    this.tabBarWrapper.style.padding = "0";
+    this.tabBarWrapper.style.background = "none";
+
+    this.innerContent.insertBefore(
+      this.tabBarWrapper,
+      this.innerContent.firstChild
+    );
+
+    this.tabBar = Tools.dom(
+      "div",
+      this.css.basic +
+        "position:relative; width:100%; left:0; top:0; height:auto; pointer-events:auto; display:flex; flex-wrap:wrap; align-items:stretch;",
+      null,
+      this.tabBarWrapper
+    );
+    this.tabBar.style.margin = "0";
+    this.tabBar.style.padding = "0";
+    this.tabBar.style.background = cc.background;
+    this.tabBar.style.borderBottom =
+      cc.borderSize + "px solid " + cc.border;
+  }
+
+  registerTab(tab) {
+    this.ensureTabBar();
+
+    if (this.tabs.indexOf(tab) === -1) this.tabs.push(tab);
+
+    const cc = this.colors;
+    const button = Tools.dom(
+      "div",
+      this.css.txt +
+        this.css.button +
+        "position:relative; pointer-events:auto; cursor:pointer; height:" +
+        this.size.h +
+        "px; line-height:" +
+        (this.size.h - 5) +
+        "px; margin:2px 4px 0 0; padding:0px 10px; border:" +
+        cc.borderSize +
+        "px solid " +
+        cc.border +
+        "; border-bottom:none; border-top-left-radius:" +
+        cc.radius +
+        "px; border-top-right-radius:" +
+        cc.radius +
+        "px;"
+    );
+
+    button.textContent = tab.txt;
+    button.style.background = cc.button;
+
+    button.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.activateTab(tab);
+    });
+
+    tab.tabButton = button;
+    this.tabBar.appendChild(button);
+
+    this.updateTabButton(tab, false);
+    this.tabBarWrapper.style.display = "block";
+    this.updateTabBarLayout();
+
+    if (!this.activeTab) this.activateTab(tab);
+  }
+
+  unregisterTab(tab) {
+    const id = this.tabs.indexOf(tab);
+    if (id !== -1) this.tabs.splice(id, 1);
+
+    if (tab.tabButton && this.tabBar && tab.tabButton.parentNode === this.tabBar)
+      this.tabBar.removeChild(tab.tabButton);
+
+    tab.tabButton = null;
+
+    if (this.activeTab === tab) {
+      this.activeTab = null;
+      if (this.tabs.length) this.activateTab(this.tabs[0]);
+    }
+
+    if (!this.tabs.length && this.tabBarWrapper) {
+      this.tabBarWrapper.style.display = "none";
+      this.tabBarHeight = 0;
+      this.innerBase = 0;
+    }
+
+    this.updateTabBarLayout();
+    this.calc();
+  }
+
+  activateTab(tab) {
+    if (!tab) return;
+    if (this.activeTab === tab && tab.isOpen) {
+      this.updateTabButton(tab, true);
+      this.updateTabBarLayout();
+      this.calc();
+      return;
+    }
+
+    this.tabs.forEach((t) => {
+      const active = t === tab;
+      if (active) t.open();
+      else t.close();
+      this.updateTabButton(t, active);
+    });
+
+    this.activeTab = tab;
+    this.updateTabBarLayout();
+    this.calc();
+  }
+
+  updateTabButton(tab, active) {
+    if (!tab || !tab.tabButton) return;
+
+    const cc = this.colors;
+    const button = tab.tabButton;
+
+    button.style.background = active ? cc.select : cc.button;
+    button.style.color = active ? cc.textSelect : cc.text;
+    button.style.opacity = active ? "1" : "0.7";
+    button.style.borderBottom = active
+      ? "none"
+      : cc.borderSize + "px solid " + cc.border;
+  }
+
+  updateTabBarLayout() {
+    if (!this.tabBarWrapper || !this.tabBar) {
+      this.tabBarHeight = 0;
+      this.innerBase = 0;
+      return;
+    }
+
+    if (!this.tabs.length) {
+      this.tabBarHeight = 0;
+      this.innerBase = 0;
+      this.inner.style.top = -this.decal + "px";
+      return;
+    }
+
+    this.tabBarHeight = this.tabBarWrapper.offsetHeight;
+    this.innerBase = this.tabBarHeight;
+    this.inner.style.top = this.innerBase - this.decal + "px";
+  }
+
   // ----------------------
   //   ADD NODE
   // ----------------------
@@ -628,6 +790,8 @@ export class Gui {
 
     if (ontop) this.uis.unshift(u);
     else this.uis.push(u);
+
+    if (u.isTab) this.registerTab(u);
 
     this.calc();
 
@@ -754,7 +918,7 @@ export class Gui {
     y = Tools.clamp(y, 0, this.range);
 
     this.decal = Math.floor(y / this.ratio);
-    this.inner.style.top = -this.decal + "px";
+    this.inner.style.top = this.innerBase - this.decal + "px";
     this.scroll.style.top = Math.floor(y) + "px";
     this.oy = y;
   }
@@ -764,7 +928,16 @@ export class Gui {
   // ----------------------
 
   calcUis() {
-    return Roots.calcUis(this.uis, this.zone, this.zone.y);
+    this.updateTabBarLayout();
+
+    const nav = this.tabBarHeight || 0;
+    const controlsHeight = Roots.calcUis(
+      this.uis,
+      this.zone,
+      this.zone.y + nav
+    );
+
+    return controlsHeight + nav;
   }
 
   calc() {

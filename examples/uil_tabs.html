@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>UIL Tabs Example</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link rel="shortcut icon" href="./assets/favicon.ico">
+    </head>
+<style>
+html{ overflow:hidden; width:100%; height:100%; }
+body { font-family: "Lucida Console", Monaco, monospace; background-color:#717b84; font-size:11px; color:#fff; margin: 0px; }
+
+</style>
+
+</head>
+
+<body>
+
+<div id='content'></div>
+
+<script type="module">
+
+
+    // https://github.com/lo-th/uil
+
+    import * as UIL from '../build/uil.module.js';
+
+    const params = {
+        generalVolume: 0.65,
+        generalTheme: 'Dark',
+        generalNotifications: true,
+        cameraFov: 60,
+        cameraAutoFocus: true,
+        cameraExposure: 1.25,
+        particlesCount: '10K',
+        particlesOpacity: 0.75,
+        particlesColor: '#ff8844'
+    };
+
+    function initGUI () {
+
+        const ui = new UIL.Gui({ w: 320, isCanvas:false, addDOMEventListeners:true });
+
+        const tabGeneral = ui.add('tab', { name:'General', bg:'#3c5466' });
+        const generalGroup = tabGeneral.add('group', { name:'General Settings', bg:'#3c5466' });
+        generalGroup.add(params, 'generalVolume', { type:'slide', displayName:'Volume', min:0, max:1, step:0.01 });
+        generalGroup.add(params, 'generalTheme', { type:'list', displayName:'Theme', list:['Light','Dark','System'] });
+        generalGroup.add(params, 'generalNotifications', { type:'bool', rename:'Notifications' });
+        generalGroup.open();
+
+        const tabCamera = ui.add('tab', { name:'Camera', bg:'#66433c' });
+        const cameraGroup = tabCamera.add('group', { name:'Camera Controls', bg:'#66433c' });
+        cameraGroup.add(params, 'cameraFov', { type:'numeric', displayName:'Field of view', min:30, max:120, step:1 });
+        cameraGroup.add(params, 'cameraAutoFocus', { type:'bool', rename:'Auto focus' });
+        cameraGroup.add(params, 'cameraExposure', { type:'slide', displayName:'Exposure', min:0.1, max:2, step:0.01 });
+        cameraGroup.open();
+
+        const tabParticles = ui.add('tab', { name:'Particles', bg:'#3c6644' });
+        const particleGroup = tabParticles.add('group', { name:'Emitter', bg:'#3c6644' });
+        particleGroup.add(params, 'particlesCount', { type:'list', displayName:'Count', list:['1K','5K','10K','50K'] });
+        particleGroup.add(params, 'particlesOpacity', { type:'slide', displayName:'Opacity', min:0, max:1, step:0.01 });
+        particleGroup.add(params, 'particlesColor', { type:'color', displayName:'Color' });
+        particleGroup.open();
+    }
+
+    initGUI();
+
+
+</script>
+</body>
+</html>
