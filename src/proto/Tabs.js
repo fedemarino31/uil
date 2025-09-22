@@ -12,8 +12,11 @@ export class Tabs extends Proto {
     // add() real del sistema (inyectado por add.js)
     this.ADD = o.add;
 
-    // Lista de nombres de tabs (solo visual en esta etapa)
+    
+    // Lista de nombres de tabs
     this.tabNames = Array.isArray(o.tabs) && o.tabs.length ? o.tabs : ['Tab 1', 'Tab 2'];
+    // Índice activo (solo visual en etapa 1)
+    this.active = Math.min(Math.max(0, o.active | 0 || 0), this.tabNames.length - 1);
 
     // Altura base del header de tabs (usa la h del Proto)
     this.baseH = this.h;
@@ -55,15 +58,16 @@ export class Tabs extends Proto {
     // Crear los "botoncitos" de tabs (estáticos en etapa 1)
     this._tabEls = [];
     for (let i = 0; i < this.tabNames.length; i++) {
+        const heightPx = this.baseH - 6; // altura visual del chip
       const t = this.dom(
         'div',
         this.css.txt +
           'position:relative; ' +
-          'display:inline-block; ' +
+          'display:inline-flex; align-items:center; ' + // centra vertical con flex
           'white-space:nowrap; ' +
           'margin-left:8px; margin-right:8px; ' +
-          `height:${this.baseH - 6}px; line-height:${this.baseH - 10}px; ` +
-          `padding:0 10px; border-radius:6px; background:${cc.background}; color:${cc.text};`
+          `height:${heightPx}px; line-height:${heightPx}px; ` + // line-height = height
+          `padding:0 10px; background:${cc.background}; color:${cc.text};`
       );
       t.textContent = this.tabNames[i];
       this.c[2].appendChild(t);
@@ -79,6 +83,7 @@ export class Tabs extends Proto {
     // Este componente siempre está "abierto"
     this.isOpen = true;
     this._applyLayout();
+    this._renderTabsActive();
   }
 
   // Estilo de fondo similar a Group.setBG
@@ -153,8 +158,11 @@ export class Tabs extends Proto {
         break;
       }
       case 'header': {
-        // Etapa 1: estático (sin seleccionar ni cambiar pestañas)
-        this.cursor('default');
+        this.cursor('pointer');
+        if (type === 'mousedown') {
+          const idx = this._hitTestTab(e);
+          if (idx !== -1) this.setActive(idx);
+        }
         break;
       }
     }
@@ -179,6 +187,41 @@ export class Tabs extends Proto {
       this.proto.uiover();
     }
   }
+
+
+  // -------- Highlight del activo --------
+  _renderTabsActive() {
+    const cc = this.colors;
+    for (let i = 0; i < this._tabEls.length; i++) {
+      const el = this._tabEls[i];
+      const isActive = i === this.active;
+      el.style.background = isActive ? cc.select : cc.background;
+      el.style.color = isActive ? cc.textOver : cc.text;      
+      el.style.fontWeight = isActive ? '600' : '400';
+      el.style.opacity = isActive ? '1' : '0.9';
+      el.style.cursor = 'pointer';
+    }
+  }
+
+  setActive(index) {
+    const clamped = Math.min(Math.max(0, index | 0), this._tabEls.length - 1);
+    if (clamped === this.active) return;
+    this.active = clamped;
+    this._renderTabsActive();
+  }
+
+  _hitTestTab(e) {
+    const ex = e.clientX;
+    const ey = e.clientY;
+    for (let i = 0; i < this._tabEls.length; i++) {
+      const r = this._tabEls[i].getBoundingClientRect();
+      if (ex >= r.left && ex <= r.right && ey >= r.top && ey <= r.bottom) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
 
   // ---------- API de agregado de controles dentro del área de contenido ----------
   add() {

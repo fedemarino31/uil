@@ -55,7 +55,7 @@
     };
 
     const ui = new UIL.Gui({ w: 128*3, open: true, isCanvas: true, addDOMEventListeners: true ,parent:document.body});
-    const tabs = ui.add('tabs', { tabs: ['General', 'Avanzado', 'Debug'] });
+    const tabs = ui.add('tabs', { tabs: ['General', 'Avanzado', 'Debug'],active:1 });
     
 
     let gPart=ui.add("group",{name:"Particles",bg:"#444466"})
