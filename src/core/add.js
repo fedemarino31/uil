@@ -22,6 +22,7 @@ import { Grid } from '../proto/Grid.js';
 import { Pad2D } from '../proto/Pad2D.js';
 import { Roots } from './Roots.js';
 import { TreeList } from '../proto/TreeList.js';
+import { Tabs } from '../proto/Tabs.js'; // ⬅️ nuevo
 
 export const add = function () {
 
@@ -57,6 +58,12 @@ export const add = function () {
             //o.dx = 8
         }
 
+                // ⬇️ Asegura inyección para Tabs
+        if( name === 'tabs' ){
+            o.add = add;
+        }
+
+
         switch( name ){
 
             case 'bool': case 'boolean': n = new Bool(o); break;
@@ -81,6 +88,7 @@ export const add = function () {
             case 'grid': n = new Grid(o); break;
             case 'pad2d': case 'pad': n = new Pad2D(o); break;
             case 'treelist': n = new TreeList(o); break;
+            case 'tabs': n = new Tabs(o); break; // ⬅️ nuevo
 
         }
 
