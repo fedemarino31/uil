@@ -81,51 +81,58 @@
         addDOMEventListeners: true,
         parent: document.body,
       });
+
       const tabs = ui.add("tabs", {
         tabs: ["General", "Avanzado", "Debug"],
         active: 0,
       });
+      tabs.setHeaderHeight(30);
+      // (opcional) cambiar el tab activo por código:
+      // tabs.setActive(1);
 
-      tabs.add("slide", {
-        name: "total",
-        min: 0,
-        max: 100,
-        open: true,
-        tab: "General",
-      });
-      tabs.add("slide", {
-        name: "amount",
-        min: 0,
-        max: 10,
-        value: 5,
-        open: true,
-        tab: "General",
-      });
-      tabs.add("slide", {
-        name: "tune",
-        min: -2,
-        max: 2,
-        open: true,
-        tab: "Avanzado",
-      });
+      const tabGeneral = tabs.getTab(0);
+      const tabAvanzado = tabs.getTabByName("Avanzado");
+      const tabDebug = tabs.getTab(2);
 
-      // Agregar a un tab por ÍNDICE:
-      tabs.add("slide", {
-        name: "power",
-        min: 0,
-        max: 20,
-        open: true,
-        value: 6.2,
-        tabIndex: 2,
-      });
+      // --- General ---
+      tabGeneral.add("slide", { name: "total", min: 0, max: 100 });
+      tabGeneral.add("slide", { name: "amount", min: 0, max: 10, value: 5 });
 
-      let gPart = tabs.add("group", {
-        name: "Group1",
-        bg: "#994466",
-        tabIndex: 1,
+      let gCloud = tabGeneral.add("group", {
+        name: "Cloud Model",
+        bg: "#446666",
         decal: 0,
       });
+      gCloud.add(params, "currentModel", {
+        type: "list",
+        displayName: "Model",
+        list: ["cloud1.glb", "cloud2.glb", "cloud3.glb"],
+      });
+      gCloud.add("button", {
+        name: "",
+        value: ["Load Model"],
+        callback: (name) => console.log(name),
+      });
+      gCloud.add("button", {
+        name: "",
+        value: ["Load Prev Model", "Load Next Model"],
+        callback: (name) => console.log(name),
+      });
+      gCloud.add(params, "totalParticles", {
+        type: "list",
+        displayName: "total particles",
+        list: ["250K", "500K", "1M", "2M"],
+      });
+      gCloud.open();
 
+      // --- Avanzado ---
+      tabAvanzado.add("slide", { name: "tune", min: -2, max: 2 });
+
+      let gPart = tabAvanzado.add("group", {
+        name: "Group1",
+        bg: "#994466",
+        decal: 0,
+      });
       gPart.add(params, "opacity", {
         type: "slide",
         displayName: "opacity",
@@ -156,117 +163,67 @@
       });
       gPart.open();
 
-      tabs.add("slide", {
-        name: "delay",
-        min: 0,
-        max: 20,
-        open: true,
-        value: 6.2,
-        tabIndex: 1,
-      });
+      tabAvanzado.add("slide", { name: "delay", min: 0, max: 20, value: 6.2 });
 
-      let gCloud = tabs.add("group", {
-        name: "Cloud Model",
-        bg: "#446666",
-        tabIndex: 0,
-        decal: 0,
-      });
-
-      gCloud.add(params, "currentModel", {
-        type: "list",
-        displayName: "Model",
-        list: ["cloud1.glb", "cloud2.glb", "cloud3.glb"],
-      });
-
-      gCloud.add("button", {
-        name: "",
-        value: ["Load Model"],
-        callback: (name) => {
-          console.log(name);
-        },
-      });
-      gCloud.add("button", {
-        name: "",
-        value: ["Load Prev Model", "Load Next Model"],
-        callback: (name) => {
-          console.log(name);
-        },
-      });
-      gCloud.add(params, "totalParticles", {
-        type: "list",
-        displayName: "total particles",
-        list: ["250K", "500K", "1M", "2M"],
-      });
-      gCloud.open();
-
-      tabs.add(params, "gamma", {
+      // --- Debug ---
+      tabDebug.add("slide", {
         type: "slide",
         displayName: "gamma",
+        name: "gamma",
         min: 0,
         max: 2,
         step: 0.01,
-        tabIndex: 2,
       });
-      tabs.add(params, "saturation", {
+      tabDebug.add("slide", {
         type: "slide",
         displayName: "saturation",
+        name: "saturation",
         min: 0,
         max: 2,
         step: 0.01,
-        tabIndex: 2,
       });
-      tabs.add(params, "hdrHigh", {
+      tabDebug.add("slide", {
         type: "slide",
         displayName: "HDR high",
+        name: "hdrHigh",
         min: 0,
         max: 1,
         step: 0.01,
-        tabIndex: 2,
       });
-      tabs.add(params, "hdrLow", {
+      tabDebug.add("slide", {
         type: "slide",
         displayName: "HDR low",
+        name: "hdrLow",
         min: 0,
         max: 1,
         step: 0.01,
-        tabIndex: 2,
       });
-      tabs.add(params, "brightness", {
+      tabDebug.add("slide", {
         type: "slide",
         displayName: "brightness",
+        name: "brightness",
         min: 0,
         max: 1,
         step: 0.01,
-        tabIndex: 2,
       });
 
-      /*
-    const g = ui.add('group', { name: 'TreeList Demo', bg: '#446666' });
+      const g = ui.add("group", { name: "TreeList Demo", bg: "#995500" });
 
-    // MODO REFERENCIA: (objeto, 'propiedad', { type:'treelist', ... })
-    
-    const treelist = g.add(state, 'path', {
-      type: 'treelist',
-      name: 'Ruta',
-      tree,
-      // (opcional) cualquier otro parámetro tuyo, por ej. focus inicial:
-      focused: false,
-      tabIndex: 1,
-      itemIndex: 7,
-      enableHover:false
-      //onChange: (tabIndex, itemIndex, newPath) => {
-        // newPath ya se envió a state.path vía this.send(newPath), pero dejamos log
-        //log(`onChange(tab=${tabIndex}, item=${itemIndex})\nnewPath = ${JSON.stringify(newPath)}`);
-      //}
-    })//.listen(); // <- activa el seguimiento de cambios externos en state.path  :contentReference[oaicite:5]{index=5}
+      // MODO REFERENCIA: (objeto, 'propiedad', { type:'treelist', ... })
 
+      const treelist = g.add(state, "path", {
+        type: "treelist",
+        name: "Ruta",
+        tree,
+        // (opcional) cualquier otro parámetro tuyo, por ej. focus inicial:
+        focused: false,
+        tabIndex: 1,
+        itemIndex: 7,
+        enableHover: false,
+      }); //.listen(); // <- activa el seguimiento de cambios externos en state.path  :contentReference[oaicite:5]{index=5}
 
+      g.open();
 
-
-    //document.body.appendChild(ui.canvas);
-    function log(msg){ document.getElementById('log').textContent = msg; }
-    g.open();
-*/
       function onClickSetState1() {
         state.path = ["Colores", "Fríos"];
       }

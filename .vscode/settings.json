@@ -1,0 +1,15 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // opcional: explícito por lenguaje
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+
+  // si querés que solo formatee lo modificado (cuando hay control de versiones)
+  "editor.formatOnSaveMode": "modificationsIfAvailable",
+
+  // exige tener config de Prettier en el repo (recomendado en equipos)
+  "prettier.requireConfig": false
+}
