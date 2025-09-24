@@ -458,6 +458,57 @@ export class Tabs extends Proto {
         }
         return u;
       },
+      // NUEVO: quitar controles de este tab
+      remove(target) {
+        const arr = tabs._uisByPage[index];
+        if (!arr || !arr.length) return false;
+
+        let id = -1;
+        let u = null;
+
+        if (typeof target === "number") {
+          // por índice
+          id = Math.max(0, Math.min(arr.length - 1, target | 0));
+          u = arr[id];
+        } else if (target && typeof target === "object") {
+          // por referencia
+          id = arr.indexOf(target);
+          if (id !== -1) u = target;
+        } else if (typeof target === "string") {
+          // por nombre (best effort)
+          for (let i = 0; i < arr.length; i++) {
+            const it = arr[i];
+            const itName =
+              (it && (it.name || (it.o && it.o.name))) ||
+              (it && it.c && it.c[1] && it.c[1].textContent);
+            if (itName === target) {
+              id = i;
+              u = it;
+              break;
+            }
+          }
+        }
+
+        if (id === -1 || !u) return false;
+
+        // quitar del DOM y limpiar
+        try {
+          tabs._pages[index].removeChild(u.c[0]);
+        } catch (_e) {}
+        arr.splice(id, 1);
+        if (typeof u.clear === "function") u.clear(true);
+        else if (typeof u.dispose === "function") u.dispose();
+
+        // actualizar layout
+        if (index === tabs.active) {
+          tabs.uis = tabs._uisByPage[tabs.active];
+          tabs._updateIsEmpty();
+          tabs.calc(); // recalcula alto del Tabs y propaga
+        } else {
+          tabs._updateIsEmpty();
+        }
+        return true;
+      },
     };
   }
 
