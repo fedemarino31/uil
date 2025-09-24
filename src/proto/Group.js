@@ -17,8 +17,11 @@ export class Group extends Proto {
     this.proto = null;
     this.isEmpty = true;
 
+    // Nuevo: modo "siempre abierto / no interactivo"
+    this.stayOpen = !!o.stayOpen;
+
     this.decal = o.group ? 8 : 0;
-    this.decal = (o.decal !== undefined) ? o.decal : (o.group ? 8 : 0)
+    this.decal = o.decal !== undefined ? o.decal : o.group ? 8 : 0;
     //this.dd = o.group ? o.group.decal + 8 : 0
 
     this.baseH = this.h;
@@ -68,7 +71,15 @@ export class Group extends Proto {
 
     this.setBG(o.bg);
 
-    if (o.open) this.open();
+    // --- Inicialización según stayOpen ---
+    if (this.stayOpen) {
+      // arrancar abierto, ocultar glifo y aplicar estilos de "abierto"
+      this.isOpen = true;
+      if (this.c[3]) this.c[3].style.display = "none"; // ocultar indicador g1/g2
+      this._applyOpenStyles();
+    } else {
+      if (o.open) this.open();
+    }
   }
 
   setBG(bg) {
@@ -110,8 +121,6 @@ export class Group extends Proto {
       if (this.isOpen) name = "content";
     }
 
-    //console.log(name)
-
     return name;
   }
 
@@ -148,22 +157,22 @@ export class Group extends Proto {
 
     switch (name) {
       case "content":
-        //this.cursor()
-
-        //if( this.marginDiv ) e.clientY -= this.margin * 0.5
-
         if (Roots.isMobile && type === "mousedown") this.getNext(e, change);
 
         if (this.proto) {
-          //e.clientY -= this.margin
           protoChange = this.proto.handleEvent(e);
         }
 
         if (!Roots.lock) this.getNext(e, change);
-
         break;
+
       case "title":
-        //this.cursor( this.isOpen ? 'n-resize':'s-resize' );
+        // En modo stayOpen NO es interactivo
+        if (this.stayOpen) {
+          this.cursor(); // cursor por defecto (no 'pointer')
+          break;
+        }
+
         this.cursor("pointer");
         if (type === "mousedown") {
           if (this.isOpen) this.close();
@@ -221,17 +230,7 @@ export class Group extends Proto {
       u.dx = 8;
     }
 
-    //u.dx += 4
-    //console.log(this.decal)
-    //u.zone.d -= 8
     Roots.forceZone = true;
-    //u.margin += this.margin
-
-    //console.log( u.margin )
-    //Roots.needReZone = true
-
-    //Roots.resize()
-    //console.log(Roots.needResize)
 
     this.uis.push(u);
 
@@ -276,8 +275,6 @@ export class Group extends Proto {
       item = this.uis.pop();
       this.c[2].removeChild(item.c[0]);
       item.clear(true);
-
-      //this.uis[i].clear()
     }
 
     this.isEmpty = true;
@@ -301,18 +298,50 @@ export class Group extends Proto {
     }
   }
 
+  // Forzar estilos de "abierto" sin pasar por super.open()
+  _applyOpenStyles() {
+    this.rSizeContent();
+
+    const s = this.s;
+    const cc = this.colors;
+
+    s[2].top = this.h + this.mtop + "px";
+    s[4].background = cc.groups;
+
+    if (this.radius) {
+      s[1].borderRadius = "0px";
+      s[2].borderRadius = "0px";
+
+      s[1].borderTopLeftRadius = this.radius + "px";
+      s[1].borderTopRightRadius = this.radius + "px";
+      s[2].borderBottomLeftRadius = this.radius + "px";
+      s[2].borderBottomRightRadius = this.radius + "px";
+    }
+
+    if (cc.gborder !== "none") {
+      s[4].borderLeft = cc.borderSize + "px solid " + cc.gborder;
+      s[4].borderRight = cc.borderSize + "px solid " + cc.gborder;
+
+      s[2].border = cc.borderSize + "px solid " + cc.gborder;
+      s[2].borderTop = "none";
+      s[1].borderBottom = cc.borderSize + "px solid rgba(0,0,0,0)";
+    }
+
+    this.parentHeight();
+  }
+
   open() {
+    // En stayOpen, no permitir apertura/cierre por API
+    if (this.stayOpen) return;
+
     super.open();
 
     this.setSvg(this.c[3], "d", this.svgs.g2);
     this.rSizeContent();
 
-    //let t = this.h - this.baseH
-
     const s = this.s;
     const cc = this.colors;
 
-    //s[2].top = (this.h-1) + 'px'
     s[2].top = this.h + this.mtop + "px";
     s[4].background = cc.groups; //'#0f0'
 
@@ -336,15 +365,13 @@ export class Group extends Proto {
     }
 
     this.parentHeight();
-
-    //Roots.isLeave = true
-    //Roots.needResize = true
   }
 
   close() {
-    super.close();
+    // En stayOpen, no permitir apertura/cierre por API
+    if (this.stayOpen) return;
 
-    //let t = this.h - this.baseH
+    super.close();
 
     this.setSvg(this.c[3], "d", this.svgs.g1);
 
@@ -354,8 +381,6 @@ export class Group extends Proto {
     const cc = this.colors;
 
     s[0].height = this.h + "px";
-    //s[1].height = (this.h-2) + 'px'
-    //s[2].top = this.h + 'px'
     s[2].top = this.h + this.mtop + "px";
     s[4].background = "none";
 
@@ -372,7 +397,6 @@ export class Group extends Proto {
 
   calcUis() {
     if (!this.isOpen || this.isEmpty) this.h = this.baseH;
-    //else this.h = Roots.calcUis( this.uis, this.zone, this.zone.y + this.baseH ) + this.baseH;
     else
       this.h =
         Roots.calcUis(
@@ -423,24 +447,4 @@ export class Group extends Proto {
 
     if (this.isOpen) this.rSizeContent();
   }
-
-  //
-  /*
-    uiout() {
-
-        if( this.lock ) return;
-        if(!this.overEffect) return;
-        if(this.s) this.s[0].background = this.colors.background;
-
-    }
-
-    uiover() {
-
-        if( this.lock ) return;
-        if(!this.overEffect) return;
-        //if( this.isOpen ) return;
-        if(this.s) this.s[0].background = this.colors.backgroundOver;
-
-    }
-*/
 }
