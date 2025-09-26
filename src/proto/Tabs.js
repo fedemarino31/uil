@@ -24,6 +24,12 @@ export class Tabs extends Proto {
     this.activeBg = o.activeBg || "#888888";
     this.inactiveBg = o.inactiveBg || "#555555";
 
+    // NEW: mapa de colores por tab
+    const __tabBgMap = this._buildTabBgMap(o);
+    this._tabBaseBg = __tabBgMap.base;    // color base (inactivo + contenido)
+    this._tabActiveBg = __tabBgMap.active; // color activo aclarado para header
+
+
     // Altura del header
     this.baseH = this.h;
 
@@ -74,7 +80,7 @@ export class Tabs extends Proto {
           "white-space:nowrap; margin-left:4px; margin-right:4px; border-radius:2px 2px 0 0;" +
           `height:${heightPx}px; line-height:${heightPx}px; ` +
           // inicial: inactivo; luego _renderTabsActive() ajusta el activo
-          `padding:0 10px; background:${this.inactiveBg}; color:${cc.text};`
+          `padding:0 10px; background:${(this._tabBaseBg[i]||this.inactiveBg)}; color:${cc.text};`
       );
       t.textContent = this.tabNames[i];
       this.c[2].appendChild(t);
@@ -132,7 +138,12 @@ export class Tabs extends Proto {
 
     this.s[0].background = "none";
     this.c[2].style.background = cc.groups;
-    this.c[3].style.background = cc.groups;
+    // NEW: si no hay colores por tab, usar color de grupo; si hay, fondo gestionado por páginas
+    if (!this._tabBaseBg || this._tabBaseBg.every(v => !v)) {
+      this.c[3].style.background = cc.groups;
+    } else {
+      this.c[3].style.background = 'transparent';
+    }
 
     if (cc.gborder !== "none") {
       this.c[2].style.border = `${cc.borderSize}px solid ${cc.gborder}`;
@@ -156,7 +167,9 @@ export class Tabs extends Proto {
     for (let i = 0; i < this._tabEls.length; i++) {
       const el = this._tabEls[i];
       const isActive = i === this.active;
-      el.style.background = isActive ? this.activeBg : this.inactiveBg;
+      const baseCol = (this._tabBaseBg && this._tabBaseBg[i]) ? this._tabBaseBg[i] : this.inactiveBg;
+      const actCol  = (this._tabActiveBg && this._tabActiveBg[i]) ? this._tabActiveBg[i] : this.activeBg;
+      el.style.background = isActive ? actCol : baseCol;
       el.style.color = isActive ? cc.textOver : cc.text;
       el.style.fontWeight = isActive ? "600" : "400";
       el.style.opacity = isActive ? "1" : "0.9";
@@ -188,6 +201,8 @@ export class Tabs extends Proto {
     this.calcUis();
     // 3) Propagar hacia arriba (actualiza GUI contenedor)
     this.parentHeight();
+    // NEW: aplicar fondo del contenido según tab
+    this._applyContentBackground(index);
   }
 
   _rsizeActiveChildren() {
@@ -523,7 +538,77 @@ export class Tabs extends Proto {
     return this._makeTabHandle(i);
   }
 
-  // ---------- Layout & tamaño ----------
+  
+  // ---------- Colores por tab (NEW) ----------
+  // Mezcla con blanco para aclarar el color activo
+  _blendWithWhite(hex, alpha = 0.22) {
+    const c = this._hexToRgb(hex);
+    if (!c) return hex;
+    const r = Math.round((1 - alpha) * c.r + alpha * 255);
+    const g = Math.round((1 - alpha) * c.g + alpha * 255);
+    const b = Math.round((1 - alpha) * c.b + alpha * 255);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  _hexToRgb(hex) {
+    if (!hex) return null;
+    let h = ('' + hex).trim();
+    if (h.startsWith('rgb')) {
+      const m = h.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+      return m ? { r: +m[1], g: +m[2], b: +m[3] } : null;
+    }
+    if (h[0] === '#') h = h.slice(1);
+    if (h.length === 3) h = h.split('').map(x => x + x).join('');
+    const n = parseInt(h, 16);
+    if (Number.isNaN(n)) return null;
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  _buildTabBgMap(o) {
+    const names = this.tabNames || [];
+    const base = new Array(names.length).fill(null);
+    const active = new Array(names.length).fill(null);
+    const src = o.tabBg ?? o.tabColors ?? null;
+    const getColorFor = (i, name) => {
+      if (!src) return null;
+      if (typeof src === 'string') return src;
+      if (Array.isArray(src)) return src[i] ?? null;
+      if (typeof src === 'object') return src[name] ?? null;
+      return null;
+    };
+    for (let i = 0; i < names.length; i++) {
+      const c = getColorFor(i, names[i]);
+      base[i] = c || null;
+      active[i] = c ? this._blendWithWhite(c, 0.22) : null;
+    }
+    return { base, active };
+  }
+
+  setTabColor(indexOrName, color) {
+    let i = -1;
+    if (typeof indexOrName === 'number') {
+      i = Math.min(Math.max(0, indexOrName | 0), (this.tabNames?.length || 1) - 1);
+    } else if (typeof indexOrName === 'string') {
+      i = (this.tabNames || []).indexOf(indexOrName);
+    }
+    if (i === -1) return false;
+    this._tabBaseBg[i] = color;
+    this._tabActiveBg[i] = color ? this._blendWithWhite(color, 0.22) : null;
+    this._renderTabsActive();
+    if (i === this.active) this._applyContentBackground(i);
+    return true;
+  }
+
+  _applyContentBackground(activeIndex) {
+    const cc = this.colors;
+    for (let i = 0; i < this._pages.length; i++) {
+      const page = this._pages[i];
+      const bg = (this._tabBaseBg && this._tabBaseBg[i]) ? this._tabBaseBg[i] : cc.groups;
+      page.style.background = (i === activeIndex) ? bg : 'transparent';
+      page.style.opacity = (i === activeIndex) ? '1' : '0.9999'; // evita parpadeos
+    }
+  }
+// ---------- Layout & tamaño ----------
   calcUis() {
     const visibleList = this.uis;
     if (!this.isOpen || !visibleList || visibleList.length === 0) {

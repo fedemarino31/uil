@@ -84,6 +84,7 @@
 
       const tabs = ui.add("tabs", {
         tabs: ["General", "Avanzado", "Debug"],
+        tabBg: { General: "#660000", Avanzado: "#006600", Debug: "#000066" },
         active: 0,
       });
       tabs.setHeaderHeight(30);
@@ -100,7 +101,7 @@
 
       let gCloud = tabGeneral.add("group", {
         name: "Cloud Model",
-        bg: "#446666",
+        //bg: "#446666",
         decal: 0,
         stayOpen: true
       });
@@ -131,7 +132,7 @@
 
       let gPart = tabAvanzado.add("group", {
         name: "Group1",
-        bg: "#994466",
+        //bg: "#994466",
         decal: 0,
       });
       gPart.add(params, "opacity", {
@@ -208,7 +209,7 @@
         step: 0.01,
       });
 
-      const g = ui.add("group", { name: "TreeList Demo", bg: "#995500" });
+      const g = ui.add("group", { name: "TreeList Demo"});
 
       // MODO REFERENCIA: (objeto, 'propiedad', { type:'treelist', ... })
 

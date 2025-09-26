@@ -462,7 +462,7 @@ export class TreeList extends Proto {
 		this.update();
 
 		// si está referenciado, propaga a objeto externo
-		this.send(newPath);
+		this.send(Array.isArray(newPath) ? newPath : [newPath]);
 		this.changeCb(this.tabIndex, this.itemIndex, newPath);
 	}
 
