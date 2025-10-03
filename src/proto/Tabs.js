@@ -83,11 +83,13 @@ export class Tabs extends Proto {
       const t = this.dom(
         "div",
         this.css.txt +
-          "position:relative; display:inline-flex; align-items:center; " +
+          "position:relative; display:inline-flex; align-items:center; flex-direction: row;" +
           "white-space:nowrap; margin-left:4px; margin-right:4px; border-radius:2px 2px 0 0;" +
           `height:${heightPx}px; line-height:${heightPx}px; ` +
           // inicial: inactivo; luego _renderTabsActive() ajusta el activo
-          `padding:0 10px; background:${(this._tabBaseBg[i]||this.inactiveBg)}; color:${cc.text};`
+          `padding:0 10px; background:${
+            this._tabBaseBg[i] || this.inactiveBg
+          }; color:${cc.text};`
       );
 
       const iconMarkup = this._tabIcons[i];
