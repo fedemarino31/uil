@@ -13,8 +13,13 @@ export class Tabs extends Proto {
     this.ADD = o.add;
 
     // Lista de tabs y activo (para header + páginas)
-    this.tabNames =
-      Array.isArray(o.tabs) && o.tabs.length ? o.tabs : ["Tab 1", "Tab 2"];
+    this._tabsData = this._normalizeTabs(o.tabs);
+    this.tabNames = this._tabsData.map((tab) => tab.label);
+    this._tabIcons = this._tabsData.map((tab) => tab.icon || null);
+    const perTabBackgrounds = this._tabsData.map((tab) => {
+      const bg = tab.background;
+      return bg !== undefined && bg !== "" ? bg : null;
+    });
     this.active = Math.min(
       Math.max(0, o.active | 0 || 0),
       this.tabNames.length - 1
@@ -25,7 +30,7 @@ export class Tabs extends Proto {
     this.inactiveBg = o.inactiveBg || "#555555";
 
     // NEW: mapa de colores por tab
-    const __tabBgMap = this._buildTabBgMap(o);
+    const __tabBgMap = this._buildTabBgMap(o, perTabBackgrounds);
     this._tabBaseBg = __tabBgMap.base;    // color base (inactivo + contenido)
     this._tabActiveBg = __tabBgMap.active; // color activo aclarado para header
 
@@ -37,6 +42,7 @@ export class Tabs extends Proto {
     this._pages = []; // <div> por tab dentro de c[3]
     this._uisByPage = []; // lista de controles por tab
     this._tabEls = []; // elementos del header
+    this._tabLabelEls = []; // etiquetas visibles
     this.uis = []; // alias a la lista del tab activo (para compatibilidad)
     this.current = -1; // índice de control activo DENTRO de la lista visible
     this.proto = null;
@@ -82,7 +88,24 @@ export class Tabs extends Proto {
           // inicial: inactivo; luego _renderTabsActive() ajusta el activo
           `padding:0 10px; background:${(this._tabBaseBg[i]||this.inactiveBg)}; color:${cc.text};`
       );
-      t.textContent = this.tabNames[i];
+
+      const iconMarkup = this._tabIcons[i];
+      if (iconMarkup) {
+        const iconWrap = document.createElement("span");
+        iconWrap.style.display = "inline-flex";
+        iconWrap.style.alignItems = "center";
+        iconWrap.style.marginRight = "6px";
+        iconWrap.style.pointerEvents = "none";
+        iconWrap.innerHTML = iconMarkup;
+        t.appendChild(iconWrap);
+      }
+
+      const labelSpan = document.createElement("span");
+      labelSpan.textContent = this.tabNames[i];
+      labelSpan.style.pointerEvents = "none";
+      t.appendChild(labelSpan);
+      this._tabLabelEls.push(labelSpan);
+
       this.c[2].appendChild(t);
       this._tabEls.push(t);
     }
@@ -538,8 +561,53 @@ export class Tabs extends Proto {
     return this._makeTabHandle(i);
   }
 
-  
+
   // ---------- Colores por tab (NEW) ----------
+  _normalizeTabs(tabs) {
+    if (!Array.isArray(tabs) || tabs.length === 0) {
+      return [
+        { label: "Tab 1", icon: null, background: null },
+        { label: "Tab 2", icon: null, background: null },
+      ];
+    }
+
+    const normalized = [];
+    for (let i = 0; i < tabs.length; i++) {
+      const entry = tabs[i];
+      if (typeof entry === "string") {
+        normalized.push({ label: entry, icon: null, background: null });
+        continue;
+      }
+
+      if (entry && typeof entry === "object") {
+        const label =
+          entry.label !== undefined
+            ? String(entry.label)
+            : entry.name !== undefined
+            ? String(entry.name)
+            : `Tab ${i + 1}`;
+        let icon = null;
+        if (entry.icon !== undefined && entry.icon !== null) {
+          if (typeof entry.icon === "string") icon = entry.icon;
+          else if (entry.icon && typeof entry.icon === "object" && entry.icon.outerHTML) icon = entry.icon.outerHTML;
+          else icon = String(entry.icon);
+        }
+        const background =
+          entry.background !== undefined
+            ? entry.background
+            : entry.bg !== undefined
+            ? entry.bg
+            : null;
+        normalized.push({ label, icon, background });
+        continue;
+      }
+
+      normalized.push({ label: `Tab ${i + 1}`, icon: null, background: null });
+    }
+
+    return normalized;
+  }
+
   // Mezcla con blanco para aclarar el color activo
   _blendWithWhite(hex, alpha = 0.22) {
     const c = this._hexToRgb(hex);
@@ -564,7 +632,7 @@ export class Tabs extends Proto {
     return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
   }
 
-  _buildTabBgMap(o) {
+  _buildTabBgMap(o, perTabBackgrounds = []) {
     const names = this.tabNames || [];
     const base = new Array(names.length).fill(null);
     const active = new Array(names.length).fill(null);
@@ -577,7 +645,8 @@ export class Tabs extends Proto {
       return null;
     };
     for (let i = 0; i < names.length; i++) {
-      const c = getColorFor(i, names[i]);
+      const bgFromTab = perTabBackgrounds[i] ?? null;
+      const c = bgFromTab || getColorFor(i, names[i]);
       base[i] = c || null;
       active[i] = c ? this._blendWithWhite(c, 0.22) : null;
     }
@@ -594,6 +663,7 @@ export class Tabs extends Proto {
     if (i === -1) return false;
     this._tabBaseBg[i] = color;
     this._tabActiveBg[i] = color ? this._blendWithWhite(color, 0.22) : null;
+    if (this._tabsData && this._tabsData[i]) this._tabsData[i].background = color;
     this._renderTabsActive();
     if (i === this.active) this._applyContentBackground(i);
     return true;
