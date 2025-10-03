@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <title>UIL – TreeList demo</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+    />
+    <link rel="shortcut icon" href="./assets/favicon.ico" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <style>
+      html {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+      }
+      body {
+        font-family: "Lucida Console", Monaco, monospace;
+        background-color: #2f3340; 
+        font-size: 11px;
+        color: #fff;
+        margin: 0;
+      }
+      #log {
+        white-space: pre;
+        margin: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="log"></div>
+
+    <script type="module">
+      import * as UIL from "../build/uil.module.js";
+
+      let params = {
+        applyJSON: false,
+        currentModel: "cloud03.glb",
+        currentCamera: "drone",
+        speed: 0.34,
+        speedMapped: 2.4,
+        fov: 45,
+        focalDistance: 1500,
+        focalRange: 2000,
+        opacity: 1.5,
+        size: 2.5,
+        dof: 2,
+        decay: 0.3,
+        gamma: 1.1,
+        bloom: 1.5,
+        linear: 10,
+        easein: 10,
+        easeout: 10,
+        listen: 0,
+        axis: "x",
+      };
+
+      // Árbol de ejemplo
+      const tree = {
+        Animales: {
+          Aves: ["Gorrión", "Águila", "Colibrí"],
+          Mamíferos: ["Perro", "Gato", "Delfín", "Elefante"],
+        },
+        Vehículos: ["Auto", "Bicicleta", "Avión", "Barco"],
+        Colores: {
+          Cálidos: ["Rojo", "Naranja", "Amarillo"],
+          Fríos: ["Azul", "Verde", "Violeta"],
+          Neutros: ["Blanco", "Negro", "Gris"],
+        },
+      };
+
+      // Objeto de estado EXTERNO a la UI (fuente de verdad)
+      const state = {
+        path: ["Animales", "Aves"], // estado inicial que debe seguir el TreeList
+      };
+
+      const ui = new UIL.Gui({
+        w: 128 * 3,
+        open: true,
+        isCanvas: true,
+        addDOMEventListeners: true,
+        parent: document.body,
+      });
+
+      const tabs = ui.add(
+        "tabs",
+        [
+          {
+            label: "General",
+            icon: '<i class="fa-solid fa-user"></i>',
+            background: "#660000",
+          },
+          {
+            label: "Avanzado",
+            icon: '<i class="fa-solid fa-star"></i>',
+            background: "#006600",
+          },
+          {
+            label: "Debug",
+            icon: '<i class="fa-solid fa-cog"></i>',
+            background: "#000066",
+          },
+        ],
+        0
+      );
+      tabs.setHeaderHeight(30);
+      // (opcional) cambiar el tab activo por código:
+      // tabs.setActive(1);
+
+      const tabGeneral = tabs.getTab(0);
+      const tabAvanzado = tabs.getTabByName("Avanzado");
+      const tabDebug = tabs.getTab(2);
+
+      // --- General ---
+      tabGeneral.add("slide", { name: "total", min: 0, max: 100 });
+      tabGeneral.add("slide", { name: "amount", min: 0, max: 10, value: 5 });
+
+      let gCloud = tabGeneral.add("group", {
+        name: "Cloud Model",
+        //bg: "#446666",
+        decal: 0,
+        stayOpen: true
+      });
+      gCloud.add(params, "currentModel", {
+        type: "list",
+        displayName: "Model",
+        list: ["cloud1.glb", "cloud2.glb", "cloud3.glb"],
+      });
+      gCloud.add("button", {
+        name: "",
+        value: ["Load Model"],
+        callback: (name) => console.log(name),
+      });
+      gCloud.add("button", {
+        name: "",
+        value: ["Load Prev Model", "Load Next Model"],
+        callback: (name) => console.log(name),
+      });
+      gCloud.add(params, "totalParticles", {
+        type: "list",
+        displayName: "total particles",
+        list: ["250K", "500K", "1M", "2M"],
+      });
+      gCloud.open();
+
+      // --- Avanzado ---
+      tabAvanzado.add("slide", { name: "tune", min: -2, max: 2 });
+
+      let gPart = tabAvanzado.add("group", {
+        name: "Group1",
+        //bg: "#994466",
+        decal: 0,
+      });
+      gPart.add(params, "opacity", {
+        type: "slide",
+        displayName: "opacity",
+        min: 0,
+        max: 10,
+        step: 0.01,
+      });
+      gPart.add(params, "size", {
+        type: "slide",
+        displayName: "size",
+        min: 0,
+        max: 10,
+        step: 0.01,
+      });
+      gPart.add(params, "dof", {
+        type: "slide",
+        displayName: "DOF size multiplier",
+        min: 0,
+        max: 5,
+        step: 0.01,
+      });
+      gPart.add(params, "decay", {
+        type: "slide",
+        displayName: "DOF opacity decay",
+        min: 0,
+        max: 5,
+        step: 0.01,
+      });
+      gPart.open();
+
+      tabAvanzado.add("slide", { name: "delay", min: 0, max: 20, value: 6.2 });
+
+      // --- Debug ---
+      tabDebug.add("slide", {
+        type: "slide",
+        displayName: "gamma",
+        name: "gamma",
+        min: 0,
+        max: 2,
+        step: 0.01,
+      });
+      tabDebug.add("slide", {
+        type: "slide",
+        displayName: "saturation",
+        name: "saturation",
+        min: 0,
+        max: 2,
+        step: 0.01,
+      });
+      tabDebug.add("slide", {
+        type: "slide",
+        displayName: "HDR high",
+        name: "hdrHigh",
+        min: 0,
+        max: 1,
+        step: 0.01,
+      });
+      tabDebug.add("slide", {
+        type: "slide",
+        displayName: "HDR low",
+        name: "hdrLow",
+        min: 0,
+        max: 1,
+        step: 0.01,
+      });
+      tabDebug.add("slide", {
+        type: "slide",
+        displayName: "brightness",
+        name: "brightness",
+        min: 0,
+        max: 1,
+        step: 0.01,
+      });
+
+      const g = ui.add("group", { name: "TreeList Demo"});
+
+      // MODO REFERENCIA: (objeto, 'propiedad', { type:'treelist', ... })
+
+      const treelist = g.add(state, "path", {
+        type: "treelist",
+        name: "Ruta",
+        tree,
+        // (opcional) cualquier otro parámetro tuyo, por ej. focus inicial:
+        focused: false,
+        tabIndex: 1,
+        itemIndex: 7,
+        enableHover: false,
+      }); //.listen(); // <- activa el seguimiento de cambios externos en state.path  :contentReference[oaicite:5]{index=5}
+
+      g.open();
+
+      function onClickSetState1() {
+        state.path = ["Colores", "Fríos"];
+      }
+
+      // create button on the DOM
+      /*
+    const button = document.createElement('button');
+    button.textContent = 'Set State to Colores/Fríos';
+    button.onclick = onClickSetState1;
+    document.body.appendChild(button);
+*/
+    </script>
+  </body>
+</html>

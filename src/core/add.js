@@ -22,6 +22,7 @@ import { Grid } from '../proto/Grid.js';
 import { Pad2D } from '../proto/Pad2D.js';
 import { Roots } from './Roots.js';
 import { TreeList } from '../proto/TreeList.js';
+import { Tabs } from '../proto/Tabs.js'; // ⬅️ nuevo
 
 export const add = function () {
 
@@ -29,10 +30,36 @@ export const add = function () {
 
         let type, o, ref = false, n = null;
 
-        if( typeof a[0] === 'string' ){ 
+        if( typeof a[0] === 'string' ){
 
             type = a[0];
-            o = a[1] || {};
+
+            if( type && type.toLowerCase() === 'tabs' && Array.isArray(a[1]) ){
+
+                const tabsArray = a[1];
+                const possibleActive = a[2];
+                const possibleOptions = typeof possibleActive === 'object' ? possibleActive : (typeof a[3] === 'object' ? a[3] : null);
+                const activeIndex = typeof possibleActive === 'number' ? possibleActive : (typeof a[3] === 'number' ? a[3] : undefined);
+
+                const meta = {};
+                const metaKeys = ['isUI','main','target','group','ontop'];
+                for( let i = 0; i < metaKeys.length; i++ ){
+                    const key = metaKeys[i];
+                    if( tabsArray && tabsArray[key] !== undefined ) meta[key] = tabsArray[key];
+                }
+
+                o = Object.assign({}, meta, possibleOptions || {}, {
+                    tabs: tabsArray,
+                });
+
+                if( activeIndex !== undefined ) o.active = activeIndex;
+                else if( o.active === undefined ) o.active = 0;
+
+            } else {
+
+                o = a[1] || {};
+
+            }
 
         } else if ( typeof a[0] === 'object' ){ // like dat gui
 
@@ -56,6 +83,12 @@ export const add = function () {
             o.add = add;
             //o.dx = 8
         }
+
+                // ⬇️ Asegura inyección para Tabs
+        if( name === 'tabs' ){
+            o.add = add;
+        }
+
 
         switch( name ){
 
@@ -81,6 +114,7 @@ export const add = function () {
             case 'grid': n = new Grid(o); break;
             case 'pad2d': case 'pad': n = new Pad2D(o); break;
             case 'treelist': n = new TreeList(o); break;
+            case 'tabs': n = new Tabs(o); break; // ⬅️ nuevo
 
         }
 
