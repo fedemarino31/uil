@@ -43,6 +43,7 @@ export class Tabs extends Proto {
     this._uisByPage = []; // lista de controles por tab
     this._tabEls = []; // elementos del header
     this._tabLabelEls = []; // etiquetas visibles
+    this._tabIconEls = []; // iconos visibles
     this.uis = []; // alias a la lista del tab activo (para compatibilidad)
     this.current = -1; // índice de control activo DENTRO de la lista visible
     this.proto = null;
@@ -92,25 +93,36 @@ export class Tabs extends Proto {
       const iconMarkup = this._tabIcons[i];
       const labelText = this.tabNames[i];
       const hasLabel = labelText !== undefined && labelText !== null && labelText !== "";
+
+      let iconWrap = null;
+      let labelSpan = null;
+
       if (iconMarkup) {
-        const iconWrap = document.createElement("span");
+        iconWrap = document.createElement("span");
         iconWrap.style.display = "inline-flex";
         iconWrap.style.alignItems = "center";
-        iconWrap.style.marginRight = hasLabel ? "6px" : "0";
         iconWrap.style.pointerEvents = "none";
         iconWrap.innerHTML = iconMarkup;
         t.appendChild(iconWrap);
       }
 
       if (hasLabel) {
-        const labelSpan = document.createElement("span");
+        labelSpan = document.createElement("span");
         labelSpan.textContent = labelText;
         labelSpan.style.pointerEvents = "none";
-        t.appendChild(labelSpan);
-        this._tabLabelEls.push(labelSpan);
-      } else {
-        this._tabLabelEls.push(null);
+        if (iconWrap) {
+          iconWrap.insertAdjacentElement("afterend", labelSpan);
+        } else {
+          t.appendChild(labelSpan);
+        }
       }
+
+      if (iconWrap) {
+        iconWrap.style.marginRight = labelSpan ? "6px" : "0";
+      }
+
+      this._tabLabelEls.push(labelSpan);
+      this._tabIconEls.push(iconWrap);
 
       this.c[2].appendChild(t);
       this._tabEls.push(t);
