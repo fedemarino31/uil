@@ -90,21 +90,27 @@ export class Tabs extends Proto {
       );
 
       const iconMarkup = this._tabIcons[i];
+      const labelText = this.tabNames[i];
+      const hasLabel = labelText !== undefined && labelText !== null && labelText !== "";
       if (iconMarkup) {
         const iconWrap = document.createElement("span");
         iconWrap.style.display = "inline-flex";
         iconWrap.style.alignItems = "center";
-        iconWrap.style.marginRight = "6px";
+        iconWrap.style.marginRight = hasLabel ? "6px" : "0";
         iconWrap.style.pointerEvents = "none";
         iconWrap.innerHTML = iconMarkup;
         t.appendChild(iconWrap);
       }
 
-      const labelSpan = document.createElement("span");
-      labelSpan.textContent = this.tabNames[i];
-      labelSpan.style.pointerEvents = "none";
-      t.appendChild(labelSpan);
-      this._tabLabelEls.push(labelSpan);
+      if (hasLabel) {
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = labelText;
+        labelSpan.style.pointerEvents = "none";
+        t.appendChild(labelSpan);
+        this._tabLabelEls.push(labelSpan);
+      } else {
+        this._tabLabelEls.push(null);
+      }
 
       this.c[2].appendChild(t);
       this._tabEls.push(t);
@@ -580,17 +586,17 @@ export class Tabs extends Proto {
       }
 
       if (entry && typeof entry === "object") {
-        const label =
-          entry.label !== undefined
-            ? String(entry.label)
-            : entry.name !== undefined
-            ? String(entry.name)
-            : `Tab ${i + 1}`;
+        let label = null;
+        if (entry.label !== undefined) label = String(entry.label);
+        else if (entry.name !== undefined) label = String(entry.name);
         let icon = null;
         if (entry.icon !== undefined && entry.icon !== null) {
           if (typeof entry.icon === "string") icon = entry.icon;
           else if (entry.icon && typeof entry.icon === "object" && entry.icon.outerHTML) icon = entry.icon.outerHTML;
           else icon = String(entry.icon);
+        }
+        if (label === null) {
+          label = icon ? "" : `Tab ${i + 1}`;
         }
         const background =
           entry.background !== undefined
