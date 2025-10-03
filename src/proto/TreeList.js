@@ -260,72 +260,72 @@ export class TreeList extends Proto {
 	}
 
 	paintItemDom(div, L, i, it, kind, isReal = true) {
-		const s = div.style;
-		const cc = this.colors;
+    const s = div.style;
+    const cc = this.colors;
 
-		// Posición
-		s.left = it.zone.x + "px";
-		s.top = it.zone.y + "px";
-		s.width = it.zone.w + "px";
-		s.height = it.zone.h - 2 + "px";
+    // Posición
+    s.left = it.zone.x + "px";
+    s.top = it.zone.y + "px";
+    s.width = it.zone.w + "px";
+    s.height = it.zone.h - 2 + "px";
 
-		// Texto
-		div.textContent = isReal ? it.label : "";
+    // Texto
+    div.textContent = isReal ? it.label : "";
 
-		// Estados
-		const selected =
-			isReal && this.value[L] !== undefined && this.value[L] === it.key;
-		const inFocusLvl = this.focused && this.focusLevel === L;
-		const focusMatch = isReal && inFocusLvl && this.focusPath[L] === it.key;
-		const isHover =
-			this.enableHover &&
-			isReal &&
-			this.hover.level === L &&
-			this.hover.index === i;
+    // Estados
+    const selected =
+      isReal && this.value[L] !== undefined && this.value[L] === it.key;
+    const inFocusLvl = this.focused && this.focusLevel === L;
+    const focusMatch = isReal && inFocusLvl && this.focusPath[L] === it.key;
+    const isHover =
+      this.enableHover &&
+      isReal &&
+      this.hover.level === L &&
+      this.hover.index === i;
 
-		// 🔸 NUEVO: ¿esta fila es la última hoja seleccionada?
-		let isLastLeaf = false;
-		if (isReal && kind === "list" && this.lastLeaf.key != null) {
-			// La hoja visible corresponde si el padre de esta lista coincide con parentPath guardado
-			// El padre actual es this.value.slice(0, L) cuando la lista está desplegada por value/focus
-			const parentNow = this.getActivePath().slice(0, L);
-			if (
-				this._pathsEqual(parentNow, this.lastLeaf.parentPath) &&
-				it.key === this.lastLeaf.key
-			) {
-				isLastLeaf = true;
-			}
-		}
+    // 🔸 NUEVO: ¿esta fila es la última hoja seleccionada?
+    let isLastLeaf = false;
+    if (isReal && kind === "list" && this.lastLeaf.key != null) {
+      // La hoja visible corresponde si el padre de esta lista coincide con parentPath guardado
+      // El padre actual es this.value.slice(0, L) cuando la lista está desplegada por value/focus
+      const parentNow = this.getActivePath().slice(0, L);
+      if (
+        this._pathsEqual(parentNow, this.lastLeaf.parentPath) &&
+        it.key === this.lastLeaf.key
+      ) {
+        isLastLeaf = true;
+      }
+    }
 
-		// Estilos base
-		s.background = cc.back;
-		s.color = cc.text;
-		s.border = "1px solid " + cc.border;
-		s.textAlign = kind === "map" ? "center" : "left";
+    // Estilos base
+    s.background = cc.back;
+    s.color = cc.text;
+    s.border = ""; //"1px solid " + cc.border;
+    s.textAlign = kind === "map" ? "center" : "left";
 
-		// Prioridad visual:
-		// 1) seleccionado (azul)
-		// 2) última hoja (nuevo color)
-		// 3) foco
-		// 4) hover
-		if (selected) {
-			s.background = cc.select;
-			s.color = cc.textSelect;
-		} else if (isLastLeaf) {
-			// color distintivo para "última hoja" (amarillo suave)
-			s.background = "rgba(255, 200, 0, 0.25)";
-			s.color = cc.text;
-		} else if (focusMatch) {
-			s.background = cc.backgroundOver;
-			s.color = cc.textOver;
-		} else if (isHover) {
-			s.background = cc.overoff;
-			s.color = cc.textOver;
-		}
+    // Prioridad visual:
+    // 1) seleccionado (azul)
+    // 2) última hoja (nuevo color)
+    // 3) foco
+    // 4) hover
+    if (selected) {
+      s.background = cc.select;
+      s.color = cc.textSelect;
+    } else if (isLastLeaf) {
+      // color distintivo para "última hoja" (amarillo suave)
+      s.background = "rgba(255, 200, 0, 0.25)";
+      s.color = cc.text;
+    } else if (focusMatch) {
+      s.background = cc.backgroundOver;
+      s.color = cc.textOver;
+    } else if (isHover) {
+      s.background = cc.overoff;
+      s.color = cc.textOver;
+    }
 
-		// Filas de padding invisibles en hoja
-		s.opacity = isReal ? "1" : "0";
-	}
+    // Filas de padding invisibles en hoja
+    s.opacity = isReal ? "1" : "0";
+  }
 
 	_pathsEqual(a, b) {
 		if (!a || !b || a.length !== b.length) return false;
