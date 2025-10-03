@@ -8,6 +8,8 @@
       content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
     />
     <link rel="shortcut icon" href="./assets/favicon.ico" />
+          <link href="./assets/css/fontawesome.css" rel="stylesheet" />
+      <link href="./assets/css/solid.css" rel="stylesheet" />
     <style>
       html {
         overflow: hidden;
@@ -82,11 +84,23 @@
         parent: document.body,
       });
 
-      const tabs = ui.add("tabs", {
-        tabs: ["General", "Avanzado", "Debug"],
-        tabBg: { General: "#660000", Avanzado: "#006600", Debug: "#000066" },
-        active: 0,
-      });
+      const tabs = ui.add("tabs", [
+        {
+          label: "General",
+          icon: '<i class="fa-solid fa-user"></i>',
+          background: "#660000",
+        },
+        {
+          label: "Avanzado",
+          icon: '<i class="fa-solid fa-star"></i>',
+          background: "#006600",
+        },
+        {
+          label: "Debug",
+          icon: '<i class="fa-solid fa-cog"></i>',
+          background: "#000066",
+        },
+      ], 0);
       tabs.setHeaderHeight(30);
       // (opcional) cambiar el tab activo por código:
       // tabs.setActive(1);

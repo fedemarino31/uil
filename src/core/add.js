@@ -30,10 +30,18 @@ export const add = function () {
 
         let type, o, ref = false, n = null;
 
-        if( typeof a[0] === 'string' ){ 
+        if( typeof a[0] === 'string' ){
 
             type = a[0];
-            o = a[1] || {};
+
+            if( type.toLowerCase() === 'tabs' && Array.isArray( a[1] ) ){
+                o = {
+                    tabs: a[1],
+                    active: typeof a[2] === 'number' ? a[2] : 0,
+                };
+            } else {
+                o = a[1] || {};
+            }
 
         } else if ( typeof a[0] === 'object' ){ // like dat gui
 
